@@ -9,6 +9,7 @@ import { OtpInput } from '../components/Feedback';
 import { Checkbox } from '../components/Field';
 import { copyWithFeedback } from '../components/Secret';
 import { downloadTextFile, printText } from '../download';
+import { codeErrorText } from '../code-errors';
 
 /**
  * Google Authenticator enrollment: generate a 160-bit secret, show it as a QR code and as a
@@ -44,7 +45,7 @@ export function TotpEnroll({ session, onDone, onCancel }: { session: VaultSessio
     try {
       setCodes(await enableTotp(session, secret, value));
     } catch (e) {
-      setError(e instanceof InvalidCodeError ? t('totp.wrongCode') : e instanceof Error ? e.message : String(e));
+      setError(e instanceof InvalidCodeError ? codeErrorText(e, t, 'totp.wrongCode') : e instanceof Error ? e.message : String(e));
       setCode('');
     } finally {
       setBusy(false);

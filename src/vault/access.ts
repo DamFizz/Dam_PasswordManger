@@ -11,7 +11,7 @@
  */
 import { DecryptionError, newKdfParams, openJson, sealJson } from '../lib/crypto';
 import { randomId, wipe } from '../lib/encoding';
-import { verifyTotp } from '../lib/totp';
+import { detectClockDrift, verifyTotp } from '../lib/totp';
 import type { VaultRepository } from './db';
 import { starterCollections } from './defaults';
 import { getDevice } from './device';
@@ -49,11 +49,22 @@ export class WrongPasswordError extends Error {
 export class InvalidCodeError extends Error {
   constructor(
     message = 'Invalid or expired code',
-    readonly reason: 'invalid' | 'expired' = 'invalid',
+    readonly reason: 'invalid' | 'expired' | 'clock' = 'invalid',
+    /** for reason 'clock': how far the authenticator's clock is ahead of this device (seconds) */
+    readonly driftSeconds?: number,
   ) {
     super(message);
     this.name = 'InvalidCodeError';
   }
+}
+
+/** Build the error for a rejected TOTP code, detecting a wrong device clock when possible. */
+async function totpCodeError(secret: string, code: string): Promise<InvalidCodeError> {
+  const drift = await detectClockDrift(secret, code);
+  if (drift !== null) {
+    return new InvalidCodeError(`This device's clock differs from your authenticator by about ${Math.round(Math.abs(drift) / 60)} minute(s).`, 'clock', drift);
+  }
+  return new InvalidCodeError();
 }
 
 export class NoVaultError extends Error {
@@ -196,7 +207,7 @@ async function continueUnlock(
       const res = await verifyTotp(totpCfg.secret, code, { lastUsedStep });
       if (!res.ok) {
         await recordFailure(repo);
-        throw new InvalidCodeError();
+        throw await totpCodeError(totpCfg.secret, code);
       }
       await repo.setLocal(replayKey, res.step);
       await recordSuccess(repo);
@@ -354,7 +365,7 @@ export async function verifySecondFactor(session: VaultSession, code: string): P
     return;
   }
   await recordFailure(session.repo);
-  throw new InvalidCodeError();
+  throw await totpCodeError(totpCfg.secret, code);
 }
 
 // ----------------------------------------------------------------------------- security changes
@@ -375,7 +386,7 @@ export async function changeMasterPassword(session: VaultSession, currentPasswor
 /** Step 1 of Authenticator enrollment happens in the UI (secret + QR). Step 2 verifies and stores. */
 export async function enableTotp(session: VaultSession, secret: string, code: string): Promise<string[]> {
   const res = await verifyTotp(secret, code);
-  if (!res.ok) throw new InvalidCodeError('That code does not match. Check the time on your phone and try again.');
+  if (!res.ok) throw await totpCodeError(secret, code);
   await session.repo.setLocal(`totpLastStep:${session.vaultId}`, res.step);
   const codes = generateRecoveryCodes();
   const hashes = await Promise.all(codes.map((c) => hashRecoveryCode(session.vaultId, c)));

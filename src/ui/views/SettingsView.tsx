@@ -24,10 +24,12 @@ import {
   changeMasterPassword,
   createRecoveryKey,
   disableTotp,
+  InvalidCodeError,
   regenerateRecoveryCodes,
   removeRecoveryKey,
   verifyMasterPassword,
   verifySecondFactor,
+  WrongPasswordError,
 } from '../../vault/access';
 import { renameDevice } from '../../vault/device';
 import { disableQuickUnlock, enableQuickUnlock, getQuickUnlock, isQuickUnlockPossible, QuickUnlockUnsupportedError } from '../../vault/quick-unlock';
@@ -39,6 +41,7 @@ import { PasswordInput, copyWithFeedback } from '../components/Secret';
 import { cx } from '../cx';
 import { downloadTextFile, printText } from '../download';
 import { RecoveryKeyDisplay } from '../screens/RecoveryKit';
+import { codeErrorText } from '../code-errors';
 import { TotpEnroll } from '../screens/TotpEnroll';
 
 const ACCENTS: { value: Accent; from: string; to: string }[] = [
@@ -110,7 +113,7 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
                 toast(t('settings.passwordChanged'));
                 onClose();
               } catch (e) {
-                setError(e instanceof Error ? e.message : String(e));
+                setError(e instanceof InvalidCodeError ? codeErrorText(e, t, 'lock.wrongCode') : e instanceof WrongPasswordError ? t('lock.wrongPassword') : e instanceof Error ? e.message : String(e));
               } finally {
                 setBusy(false);
               }

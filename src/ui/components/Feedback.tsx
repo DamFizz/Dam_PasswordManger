@@ -11,6 +11,7 @@ import { PasswordInput } from './Secret';
 import { ThrottledError } from '../../vault/throttle';
 import { WrongPasswordError, InvalidCodeError } from '../../vault/access';
 import { app } from '../../state/app';
+import { codeErrorText } from '../code-errors';
 
 export function Toaster() {
   const toasts = useStore(toastStore, (s) => s.toasts);
@@ -114,7 +115,7 @@ export function ReauthHost() {
     } catch (e) {
       setShake((n) => n + 1);
       if (e instanceof WrongPasswordError) setError(t('lock.wrongPassword'));
-      else if (e instanceof InvalidCodeError) setError(t('lock.wrongCode'));
+      else if (e instanceof InvalidCodeError) setError(codeErrorText(e, t, 'lock.wrongCode'));
       else if (e instanceof ThrottledError) setError(t('lock.throttled', { s: Math.ceil((e.retryAt - Date.now()) / 1000) }));
       else setError(e instanceof Error ? e.message : String(e));
     } finally {

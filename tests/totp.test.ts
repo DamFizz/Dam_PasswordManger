@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { base32Decode, base32Encode, generateTotpSecret, hotp, otpauthUri, totp, verifyTotp } from '../src/lib/totp';
+import { createHmac } from 'node:crypto';
+import { base32Decode, base32Encode, detectClockDrift, generateTotpSecret, hotp, otpauthUri, totp, verifyTotp } from '../src/lib/totp';
 import { utf8Encode } from '../src/lib/encoding';
 
 // RFC 6238 Appendix B test secret (SHA-1): ASCII "12345678901234567890"
@@ -84,5 +85,43 @@ describe('TOTP (RFC 6238 Appendix B, SHA-1)', () => {
     expect(uri).toContain('issuer=MyVault');
     expect(uri).toContain('digits=6');
     expect(uri).toContain('period=30');
+  });
+});
+
+/** Independent RFC 6238 implementation on Node's crypto, to cross-check the app's code. */
+function referenceTotp(secretB32: string, nowMs: number): string {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(nowMs / 1000 / 30)));
+  const mac = createHmac('sha1', Buffer.from(base32Decode(secretB32))).update(counter).digest();
+  const o = mac[mac.length - 1] & 0x0f;
+  const bin = ((mac[o] & 0x7f) << 24) | (mac[o + 1] << 16) | (mac[o + 2] << 8) | mac[o + 3];
+  return String(bin % 1_000_000).padStart(6, '0');
+}
+
+describe('cross-check with an independent implementation', () => {
+  it('matches Node crypto for random secrets at real timestamps', async () => {
+    for (let i = 0; i < 25; i++) {
+      const secret = generateTotpSecret();
+      const now = Date.now() + i * 997_000;
+      expect(await totp(secret, now)).toBe(referenceTotp(secret, now));
+    }
+  });
+});
+
+describe('clock drift detection', () => {
+  it('explains a correct code from a phone whose clock is 3 minutes ahead', async () => {
+    const now = 1_792_819_000_000;
+    const secret = generateTotpSecret();
+    const phoneCode = await totp(secret, now + 182_000);
+    expect((await verifyTotp(secret, phoneCode, { nowMs: now })).ok).toBe(false); // still rejected
+    expect(await detectClockDrift(secret, phoneCode, { nowMs: now })).toBe(180);
+  });
+
+  it('detects a device clock that is ahead, and ignores random codes', async () => {
+    const now = 1_792_819_000_000;
+    const secret = generateTotpSecret();
+    expect(await detectClockDrift(secret, await totp(secret, now - 300_000), { nowMs: now })).toBe(-300);
+    expect(await detectClockDrift(secret, 'abcdef', { nowMs: now })).toBeNull();
+    expect(await detectClockDrift(secret, await totp(secret, now - 3_600_000), { nowMs: now })).toBeNull();
   });
 });

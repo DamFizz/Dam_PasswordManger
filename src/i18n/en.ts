@@ -775,6 +775,8 @@ export const en = {
   'totp.verify': 'Verify & enable',
   'totp.wrongCode': 'That code didn’t match. Make sure your phone’s time is set automatically and try the newest code.',
   'totp.enabled': 'Google Authenticator is now required to unlock.',
+  'totp.clockBehind': 'Your code is correct, but this device’s clock is about {min} min behind your phone. Turn on automatic time — on Windows: Settings → Time & language → Date & time → “Set time automatically”, then “Sync now” — and try again.',
+  'totp.clockAhead': 'Your code is correct, but this device’s clock is about {min} min ahead of your phone. Turn on automatic time — on Windows: Settings → Time & language → Date & time → “Set time automatically”, then “Sync now” — and try again.',
 
   'tour.title': 'Welcome to your vault',
   'tour.body': 'A few quick steps to get the most out of MyVault.',

@@ -163,6 +163,18 @@ describe('Google Authenticator (TOTP) second factor', () => {
     expect(s.security.totp).toBeNull();
   });
 
+  it('enrollment reports a wrong device clock instead of a generic mismatch', async () => {
+    const repo = freshRepo();
+    const s = await createVault(repo, STRONG_PASSWORD);
+    const secret = generateTotpSecret();
+    // Phone 3 minutes ahead of this device (the clock problem seen on a real PC)
+    const err = await enableTotp(s, secret, await totp(secret, Date.now() + 182_000)).catch((e) => e);
+    expect(err).toBeInstanceOf(InvalidCodeError);
+    expect(err.reason).toBe('clock');
+    expect(err.driftSeconds).toBeGreaterThanOrEqual(150);
+    expect(s.security.totp).toBeNull();
+  });
+
   it('is mandatory once enabled: password alone does not unlock', async () => {
     const { repo, secret, codes } = await vaultWithTotp();
     expect(codes).toHaveLength(10);

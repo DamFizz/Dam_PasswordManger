@@ -117,6 +117,34 @@ function timingSafeStringEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * Explain a failed verification: if the code matches a time step outside the accepted window
+ * (up to ±maxSteps, default ±10 minutes), return the clock difference in seconds — positive when
+ * the authenticator (phone) is ahead of this device. The code is still rejected; this only lets
+ * the UI say "your clock is wrong" instead of "wrong code".
+ */
+export async function detectClockDrift(
+  secretB32: string,
+  code: string,
+  opts: { nowMs?: number; window?: number; maxSteps?: number; digits?: number; period?: number } = {},
+): Promise<number | null> {
+  const digits = opts.digits ?? 6;
+  const period = opts.period ?? 30;
+  const normalized = code.replace(/\s/g, '');
+  if (!new RegExp(`^\\d{${digits}}$`).test(normalized)) return null;
+  const secret = base32Decode(secretB32);
+  const current = timeStep(opts.nowMs ?? Date.now(), period);
+  const window = opts.window ?? 1;
+  const max = opts.maxSteps ?? 20;
+  // Search outward so the smallest plausible offset wins.
+  for (let d = window + 1; d <= max; d++) {
+    for (const step of [current + d, current - d]) {
+      if (timingSafeStringEqual(await hotp(secret, step, digits), normalized)) return (step - current) * period;
+    }
+  }
+  return null;
+}
+
 export function otpauthUri(secretB32: string, account: string, issuer = 'MyVault'): string {
   const label = encodeURIComponent(`${issuer}:${account}`);
   const params = new URLSearchParams({

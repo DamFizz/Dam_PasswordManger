@@ -15,6 +15,7 @@ import { Modal } from '../components/Modal';
 import { PasswordInput } from '../components/Secret';
 import { cx } from '../cx';
 import { RestoreFromFile } from './Onboarding';
+import { codeErrorText } from '../code-errors';
 
 function useCountdown(until: number | null): number {
   const [now, setNow] = useState(Date.now());
@@ -55,7 +56,7 @@ export function LockScreen() {
   const fail = (e: unknown) => {
     setShake((n) => n + 1);
     if (e instanceof WrongPasswordError) setError(t('lock.wrongPassword'));
-    else if (e instanceof InvalidCodeError) setError(e.reason === 'expired' ? t('lock.challengeExpired') : useRecovery ? t('lock.wrongRecoveryCode') : t('lock.wrongCode'));
+    else if (e instanceof InvalidCodeError) setError(codeErrorText(e, t, useRecovery ? 'lock.wrongRecoveryCode' : 'lock.wrongCode'));
     else if (e instanceof ThrottledError) {
       setLockedUntil(e.retryAt);
       setError(null);

@@ -753,6 +753,8 @@ export const ms: Dictionary = {
   'totp.verify': 'Sahkan & aktifkan',
   'totp.wrongCode': 'Kod itu tidak sepadan. Pastikan masa telefon anda ditetapkan secara automatik dan cuba kod terbaharu.',
   'totp.enabled': 'Google Authenticator kini diperlukan untuk membuka kunci.',
+  'totp.clockBehind': 'Kod anda betul, tetapi jam peranti ini kira-kira {min} min lewat berbanding telefon anda. Aktifkan masa automatik — pada Windows: Tetapan → Masa & bahasa → Tarikh & masa → “Tetapkan masa secara automatik”, kemudian “Segerakkan sekarang” — dan cuba lagi.',
+  'totp.clockAhead': 'Kod anda betul, tetapi jam peranti ini kira-kira {min} min awal berbanding telefon anda. Aktifkan masa automatik — pada Windows: Tetapan → Masa & bahasa → Tarikh & masa → “Tetapkan masa secara automatik”, kemudian “Segerakkan sekarang” — dan cuba lagi.',
 
   'tour.title': 'Selamat datang ke peti besi anda',
   'tour.body': 'Beberapa langkah pantas untuk memanfaatkan MyVault sepenuhnya.',
