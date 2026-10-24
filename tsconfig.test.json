@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["vite/client", "vite-plugin-pwa/vanillajs", "node", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "tests", "e2e"]
+}
