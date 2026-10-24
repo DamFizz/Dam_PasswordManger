@@ -197,7 +197,7 @@ export function AppShell() {
         </main>
 
         {/* Mobile bottom navigation */}
-        <nav aria-label={t('nav.main')} className="safe-bottom shrink-0 border-t border-line bg-surface/95 backdrop-blur md:hidden">
+        <nav aria-label={t('nav.main')} className="safe-bottom relative z-30 shrink-0 border-t border-line bg-surface/95 backdrop-blur md:hidden">
           <div className="grid h-16 grid-cols-5">
             <BottomTab icon={<Home className="size-[22px]" />} label={t('nav.home')} active={route.name === 'dashboard'} onClick={() => navigate({ name: 'dashboard' })} />
             <BottomTab icon={<Layers className="size-[22px]" />} label={t('nav.vault')} active={route.name === 'items'} onClick={() => navigate({ name: 'items', filter: { kind: 'all' } })} />

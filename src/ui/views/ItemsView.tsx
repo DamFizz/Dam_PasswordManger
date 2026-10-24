@@ -15,6 +15,7 @@ import {
   Star,
   Tag,
   Trash2,
+  UserRound,
   X,
 } from 'lucide-react';
 import { useT } from '../../i18n';
@@ -303,7 +304,7 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
         {!selecting && !item.trashedAt && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             {item.type === 'login' && (item.username || item.email) && (
-              <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} />
+              <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} icon={<UserRound className="size-4" />} />
             )}
             {(item.password || item.licenseKey) && (
               <CopyButton
@@ -312,6 +313,7 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
                 label={item.password ? t('field.password') : t('field.licenseKey')}
                 beforeCopy={() => ensureItemAccess(item)}
                 onCopied={() => void markUsed(item.id)}
+                icon={<KeyRound className="size-4" />}
               />
             )}
           </div>
@@ -343,8 +345,8 @@ function ItemCard({ item, category, selected, checked, selecting, onToggle }: Ro
       </button>
       {!selecting && !item.trashedAt && (item.password || item.username || item.email) && (
         <div className="mt-3 flex items-center gap-1 border-t border-line pt-2">
-          {(item.username || item.email) && <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} />}
-          {item.password && <CopyButton value={item.password} secret label={t('field.password')} beforeCopy={() => ensureItemAccess(item)} onCopied={() => void markUsed(item.id)} />}
+          {(item.username || item.email) && <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} icon={<UserRound className="size-4" />} />}
+          {item.password && <CopyButton value={item.password} secret label={t('field.password')} beforeCopy={() => ensureItemAccess(item)} onCopied={() => void markUsed(item.id)} icon={<KeyRound className="size-4" />} />}
           {category && (
             <span className="ml-auto inline-flex min-w-0 items-center gap-1 truncate text-xs text-faint">
               <CollectionIcon name={category.icon} color={category.color} className="size-3.5" />

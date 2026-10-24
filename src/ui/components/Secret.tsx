@@ -45,6 +45,7 @@ export function CopyButton({
   size = 'sm',
   beforeCopy,
   onCopied,
+  icon,
 }: {
   value: string | (() => Promise<string | null>);
   secret: boolean;
@@ -52,6 +53,8 @@ export function CopyButton({
   size?: 'sm' | 'md';
   beforeCopy?: () => Promise<boolean>;
   onCopied?: () => void;
+  /** icon shown instead of the generic copy icon (e.g. a key for passwords in lists) */
+  icon?: ReactNode;
 }) {
   const t = useT();
   const [done, setDone] = useState(false);
@@ -75,7 +78,7 @@ export function CopyButton({
         }
       }}
     >
-      {done ? <Check className="size-4" /> : <Copy className="size-4" />}
+      {done ? <Check className="size-4" /> : (icon ?? <Copy className="size-4" />)}
     </IconButton>
   );
 }

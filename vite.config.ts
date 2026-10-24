@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
@@ -41,13 +42,16 @@ function cspMetaPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+// `--mode phone` serves over HTTPS (self-signed) on your Wi-Fi so a phone can test the app:
+// browsers only allow Web Crypto on HTTPS (or localhost).
+export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
     react(),
     tailwindcss(),
+    mode === 'phone' && basicSsl({ name: 'myvault-local', domains: ['localhost'] }),
     cspMetaPlugin(),
     VitePWA({
       registerType: 'prompt',
@@ -97,4 +101,4 @@ export default defineConfig({
     port: 4173,
     strictPort: true,
   },
-});
+}));

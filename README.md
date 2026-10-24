@@ -46,6 +46,7 @@ cp .env.example .env.local
 | `npm run dev` | Development server (http://localhost:5173) |
 | `npm run build` | Type-check and production build into `dist/` |
 | `npm run preview` | Serve the production build (http://localhost:4173) |
+| `npm run dev:phone` | Serve over HTTPS on your Wi-Fi so a phone can test it (self-signed certificate, see docs/MOBILE.md) |
 | `npm test` | Unit, integration and UI tests (Vitest + Testing Library, ~10 s) |
 | `npm run test:e2e` | End-to-end tests (Playwright) against the production build, desktop and phone viewports. Uses your installed Google Chrome. |
 | `npm run typecheck` | TypeScript only |

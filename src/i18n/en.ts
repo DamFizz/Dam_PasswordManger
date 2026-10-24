@@ -806,6 +806,11 @@ export const en = {
   'update.offlineReady': 'MyVault is ready to work offline.',
   'update.reload': 'Update',
 
+  'insecure.title': 'Open MyVault over HTTPS',
+  'insecure.body': 'This page was opened over an insecure connection (http://). Browsers turn off the encryption features MyVault needs on insecure pages, so your vault cannot be created or unlocked here. Nothing was stored.',
+  'insecure.tryHttps': 'If MyVault is running on your PC with “npm run dev:phone”, open:',
+  'insecure.deploy': 'For everyday use, open your deployed https:// address (see docs/MOBILE.md).',
+
   'view.grid': 'Grid view',
   'view.list': 'List view',
 } as const;

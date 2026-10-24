@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cx } from '../cx';
 import { CollectionIcon, ITEM_TYPE_ICONS } from '../icons';
 import type { Collection, VaultItem } from '../../vault/types';
@@ -149,15 +149,16 @@ export function PageHeader({ title, subtitle, actions, icon }: { title: ReactNod
 }
 
 export function Logo({ className }: { className?: string }) {
+  const gradientId = `mv-logo-${useId().replace(/:/g, '')}`;
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden>
       <defs>
-        <linearGradient id="mv-logo-g" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" style={{ stopColor: 'var(--accent)' }} />
           <stop offset="1" style={{ stopColor: 'var(--accent-2)' }} />
         </linearGradient>
       </defs>
-      <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#mv-logo-g)" />
+      <rect x="2" y="2" width="44" height="44" rx="13" fill={`url(#${gradientId})`} />
       <path d="M24 11.5 14 15.6v7.6c0 6.6 4.2 11.6 10 13.3 5.8-1.7 10-6.7 10-13.3v-7.6Z" fill="rgb(0 0 0 / 0.18)" />
       <path d="M24 13.5 15.8 17v6.3c0 5.5 3.4 9.6 8.2 11.1 4.8-1.5 8.2-5.6 8.2-11.1V17Z" fill="none" stroke="white" strokeWidth="2.2" strokeLinejoin="round" />
       <circle cx="24" cy="22.6" r="2.6" fill="white" />

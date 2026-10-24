@@ -2,6 +2,22 @@
 
 MyVault is a Progressive Web App: you install it from the browser and it then opens full-screen like a normal app, works offline, and gets its own home-screen icon. It must be served over **HTTPS** (see DEPLOYMENT.md).
 
+## Try it on your phone right now (same Wi-Fi, no deployment)
+Browsers only allow MyVault's encryption on `https://` pages, so a plain `http://192.168…` address shows an "Open MyVault over HTTPS" warning instead of the app. For quick testing, serve it over HTTPS from your PC:
+
+1. On the PC, run:
+   ```bash
+   npm run dev:phone
+   ```
+   It prints addresses such as `https://192.168.100.127:5173`. Use the **Wi-Fi** one.
+2. If Windows Defender Firewall asks whether Node.js may accept connections, allow it on **Private networks**.
+3. On the phone, connected to the same Wi-Fi, open that `https://` address.
+4. The phone warns that the certificate is not trusted, because it is a self-signed test certificate:
+   * **Android Chrome:** Advanced → Proceed to 192.168… (unsafe)
+   * **iPhone Safari:** Show Details → visit this website → Visit Website
+
+This mode is for **testing only**. Installing to the home screen and offline use need a trusted certificate. A vault created at this address is stored under that address and is separate from your real deployed site. For everyday use, deploy it (DEPLOYMENT.md) and open the `https://….pages.dev` address.
+
 ## Android (Chrome, Edge, Samsung Internet)
 1. Open `https://YOUR-SITE` in **Chrome**.
 2. Tap **Install app** in the banner, or **⋮ → Install app / Add to Home screen**.

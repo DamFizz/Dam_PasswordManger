@@ -164,14 +164,14 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cx(
-          'relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200 cursor-pointer',
-          checked ? 'bg-accent' : 'bg-surface-3 border border-line-strong',
+          'relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 cursor-pointer',
+          checked ? 'bg-accent border-transparent' : 'bg-surface-3 border-line-strong',
         )}
       >
         <span
           className={cx(
-            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform duration-200',
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+            'absolute left-0 top-px size-5 rounded-full bg-white shadow transition-transform duration-200',
+            checked ? 'translate-x-5' : 'translate-x-0.5',
           )}
         />
       </button>

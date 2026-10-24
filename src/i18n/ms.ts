@@ -784,6 +784,11 @@ export const ms: Dictionary = {
   'update.offlineReady': 'MyVault sedia berfungsi di luar talian.',
   'update.reload': 'Kemas kini',
 
+  'insecure.title': 'Buka MyVault melalui HTTPS',
+  'insecure.body': 'Halaman ini dibuka melalui sambungan tidak selamat (http://). Pelayar mematikan ciri penyulitan yang diperlukan MyVault pada halaman tidak selamat, jadi peti besi anda tidak boleh dicipta atau dibuka di sini. Tiada apa-apa disimpan.',
+  'insecure.tryHttps': 'Jika MyVault dijalankan pada PC anda dengan “npm run dev:phone”, buka:',
+  'insecure.deploy': 'Untuk kegunaan harian, buka alamat https:// yang telah anda terbitkan (lihat docs/MOBILE.md).',
+
   'view.grid': 'Paparan grid',
   'view.list': 'Paparan senarai',
 };

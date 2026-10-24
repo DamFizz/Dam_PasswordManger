@@ -158,6 +158,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* iOS Safari zooms the page when a form field with text smaller than 16px is focused. */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 [data-density='compact'] {
   font-size: 15px;
 }
@@ -229,6 +238,8 @@ select:focus-visible {
 
 /* Dialog / sheet */
 dialog.mv-dialog {
+  /* Tailwind's preflight resets margins; native dialogs need margin: auto to be centred. */
+  margin: auto;
   padding: 0;
   border: none;
   background: transparent;

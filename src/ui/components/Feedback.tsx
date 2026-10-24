@@ -220,7 +220,6 @@ export function OtpInput({ value, onChange, onComplete, disabled, autoFocus, inv
               className={cx(
                 'flex aspect-[4/5] items-center justify-center rounded-xl border bg-surface-2 secret text-2xl font-semibold transition-colors',
                 invalid ? 'border-danger' : active ? 'peer-focus:border-accent border-line-strong' : 'border-line',
-                i === 2 && 'mr-2',
               )}
             >
               {d.trim()}
