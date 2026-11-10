@@ -1,6 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useSync } from '../../state/sync-controller';
 import {
+  Archive,
   Check,
+  ChevronRight,
+  Cloud,
+  DatabaseBackup,
+  FolderTree,
+  Trash2,
   FingerprintPattern,
   Info,
   KeyRound,
@@ -16,7 +23,7 @@ import {
 } from 'lucide-react';
 import { formatDate, useT } from '../../i18n';
 import { isAcceptableMasterPassword } from '../../lib/strength';
-import { emptyTrash, getRepo, lock, navigate, requireSession, useApp } from '../../state/app';
+import { getRepo, lock, navigate, requireSession, useApp } from '../../state/app';
 import { setPrefs, usePrefs } from '../../state/prefs-store';
 import type { Accent } from '../../state/prefs';
 import { confirmDialog, requestReauth, toast, toastError } from '../../state/ui';
@@ -44,13 +51,13 @@ import { RecoveryKeyDisplay } from '../screens/RecoveryKit';
 import { codeErrorText } from '../code-errors';
 import { TotpEnroll } from '../screens/TotpEnroll';
 
-const ACCENTS: { value: Accent; from: string; to: string }[] = [
-  { value: 'teal', from: '#2dd4bf', to: '#818cf8' },
-  { value: 'violet', from: '#a78bfa', to: '#f472b6' },
-  { value: 'blue', from: '#60a5fa', to: '#22d3ee' },
-  { value: 'emerald', from: '#34d399', to: '#a3e635' },
-  { value: 'rose', from: '#fb7185', to: '#fb923c' },
-  { value: 'amber', from: '#fbbf24', to: '#f87171' },
+const ACCENTS: { value: Accent; color: string }[] = [
+  { value: 'blue', color: '#0a84ff' },
+  { value: 'teal', color: '#40c8e0' },
+  { value: 'violet', color: '#5e5ce6' },
+  { value: 'emerald', color: '#30d158' },
+  { value: 'rose', color: '#ff375f' },
+  { value: 'amber', color: '#ff9f0a' },
 ];
 
 function Row({ icon, title, description, children }: { icon?: ReactNode; title: ReactNode; description?: ReactNode; children?: ReactNode }) {
@@ -65,6 +72,17 @@ function Row({ icon, title, description, children }: { icon?: ReactNode; title: 
       </div>
       {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
     </div>
+  );
+}
+
+function LinkRow({ icon, title, detail, onClick }: { icon: ReactNode; title: string; detail?: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 cursor-pointer">
+      <span className="text-muted [&>svg]:size-[18px]">{icon}</span>
+      <span className="min-w-0 flex-1 text-[15px] text-fg">{title}</span>
+      {detail && <span className="text-sm text-faint">{detail}</span>}
+      <ChevronRight className="size-4 text-faint" />
+    </button>
   );
 }
 
@@ -150,6 +168,8 @@ export function SettingsView() {
   const [storage, setStorage] = useState<{ usage?: number; quota?: number; records: number; snapshots: number } | null>(null);
   const [, force] = useState(0);
   const security = session?.security;
+  const syncConnected = useSync((x) => x.connected);
+  const syncLabel = syncConnected ? t('settings.on') : t('settings.off');
 
   useEffect(() => {
     if (!session) return;
@@ -179,69 +199,13 @@ export function SettingsView() {
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-6 sm:px-6 md:pb-10">
         <PageHeader title={t('settings.title')} icon={<SettingsIcon className="size-5" />} />
         <div className="space-y-4">
-          <SectionCard title={t('settings.appearance')}>
-            <div className="divide-y divide-line">
-              <Row icon={<Palette />} title={t('settings.theme')}>
-                <Segmented
-                  label={t('settings.theme')}
-                  value={prefs.theme}
-                  onChange={(v) => setPrefs({ theme: v })}
-                  size="sm"
-                  options={[
-                    { value: 'dark', label: t('settings.dark'), icon: <Moon className="size-3.5" /> },
-                    { value: 'light', label: t('settings.light'), icon: <Sun className="size-3.5" /> },
-                    { value: 'system', label: t('settings.system'), icon: <Monitor className="size-3.5" /> },
-                  ]}
-                />
-              </Row>
-              <Row title={t('settings.accent')}>
-                <div className="flex gap-2" role="radiogroup" aria-label={t('settings.accent')}>
-                  {ACCENTS.map((a) => (
-                    <button
-                      key={a.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={prefs.accent === a.value}
-                      aria-label={a.value}
-                      onClick={() => setPrefs({ accent: a.value })}
-                      className={cx('flex size-8 items-center justify-center rounded-full ring-offset-2 ring-offset-surface transition-transform hover:scale-110 cursor-pointer', prefs.accent === a.value && 'ring-2 ring-fg')}
-                      style={{ backgroundImage: `linear-gradient(135deg, ${a.from}, ${a.to})` }}
-                    >
-                      {prefs.accent === a.value && <Check className="size-4 text-black/70" />}
-                    </button>
-                  ))}
-                </div>
-              </Row>
-              <Row icon={<Languages />} title={t('settings.language')}>
-                <Segmented label={t('settings.language')} value={prefs.lang} onChange={(v) => setPrefs({ lang: v })} size="sm" options={[{ value: 'en', label: 'English' }, { value: 'ms', label: 'Bahasa Melayu' }]} />
-              </Row>
-              <Row title={t('settings.motion')} description={t('settings.motionHelp')}>
-                <Segmented
-                  label={t('settings.motion')}
-                  value={prefs.motion}
-                  onChange={(v) => setPrefs({ motion: v })}
-                  size="sm"
-                  options={[
-                    { value: 'system', label: t('settings.system') },
-                    { value: 'full', label: t('settings.motionFull') },
-                    { value: 'reduced', label: t('settings.motionReduced') },
-                  ]}
-                />
-              </Row>
-              <Row title={t('settings.density')}>
-                <Segmented
-                  label={t('settings.density')}
-                  value={prefs.density}
-                  onChange={(v) => setPrefs({ density: v })}
-                  size="sm"
-                  options={[
-                    { value: 'comfortable', label: t('settings.comfortable') },
-                    { value: 'compact', label: t('settings.compact') },
-                  ]}
-                />
-              </Row>
-            </div>
-          </SectionCard>
+          <div className="card divide-y divide-line overflow-hidden p-0">
+            <LinkRow icon={<Cloud />} title={t('nav.sync')} detail={syncLabel} onClick={() => navigate({ name: 'sync' })} />
+            <LinkRow icon={<DatabaseBackup />} title={t('nav.backup')} onClick={() => navigate({ name: 'backup' })} />
+            <LinkRow icon={<FolderTree />} title={t('organize.title')} onClick={() => navigate({ name: 'organize' })} />
+            <LinkRow icon={<Archive />} title={t('nav.archive')} onClick={() => navigate({ name: 'items', filter: { kind: 'archive' } })} />
+            <LinkRow icon={<Trash2 />} title={t('nav.trash')} onClick={() => navigate({ name: 'items', filter: { kind: 'trash' } })} />
+          </div>
 
           <SectionCard title={t('settings.security')}>
             <div className="divide-y divide-line">
@@ -444,7 +408,71 @@ export function SettingsView() {
             </div>
           </SectionCard>
 
-          <SectionCard title={t('settings.vault')}>
+          <SectionCard title={t('settings.appearance')}>
+            <div className="divide-y divide-line">
+              <Row icon={<Palette />} title={t('settings.theme')}>
+                <Segmented
+                  label={t('settings.theme')}
+                  value={prefs.theme}
+                  onChange={(v) => setPrefs({ theme: v })}
+                  size="sm"
+                  options={[
+                    { value: 'dark', label: t('settings.dark'), icon: <Moon className="size-3.5" /> },
+                    { value: 'light', label: t('settings.light'), icon: <Sun className="size-3.5" /> },
+                    { value: 'system', label: t('settings.system'), icon: <Monitor className="size-3.5" /> },
+                  ]}
+                />
+              </Row>
+              <Row title={t('settings.accent')}>
+                <div className="flex gap-2" role="radiogroup" aria-label={t('settings.accent')}>
+                  {ACCENTS.map((a) => (
+                    <button
+                      key={a.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={prefs.accent === a.value}
+                      aria-label={a.value}
+                      onClick={() => setPrefs({ accent: a.value })}
+                      className={cx('flex size-8 items-center justify-center rounded-full ring-offset-2 ring-offset-surface transition-transform hover:scale-110 cursor-pointer', prefs.accent === a.value && 'ring-2 ring-fg')}
+                      style={{ backgroundColor: a.color }}
+                    >
+                      {prefs.accent === a.value && <Check className="size-4 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </Row>
+              <Row icon={<Languages />} title={t('settings.language')}>
+                <Segmented label={t('settings.language')} value={prefs.lang} onChange={(v) => setPrefs({ lang: v })} size="sm" options={[{ value: 'en', label: 'English' }, { value: 'ms', label: 'Bahasa Melayu' }]} />
+              </Row>
+              <Row title={t('settings.motion')} description={t('settings.motionHelp')}>
+                <Segmented
+                  label={t('settings.motion')}
+                  value={prefs.motion}
+                  onChange={(v) => setPrefs({ motion: v })}
+                  size="sm"
+                  options={[
+                    { value: 'system', label: t('settings.system') },
+                    { value: 'full', label: t('settings.motionFull') },
+                    { value: 'reduced', label: t('settings.motionReduced') },
+                  ]}
+                />
+              </Row>
+              <Row title={t('settings.density')}>
+                <Segmented
+                  label={t('settings.density')}
+                  value={prefs.density}
+                  onChange={(v) => setPrefs({ density: v })}
+                  size="sm"
+                  options={[
+                    { value: 'comfortable', label: t('settings.comfortable') },
+                    { value: 'compact', label: t('settings.compact') },
+                  ]}
+                />
+              </Row>
+            </div>
+          </SectionCard>
+
+          <SectionCard title={t('settings.advanced')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <SelectField
                 label={t('settings.defaultCategory')}
@@ -486,25 +514,7 @@ export function SettingsView() {
                 options={[7, 14, 30, 90, 0].map((d) => ({ value: String(d), label: d === 0 ? t('settings.never') : t('settings.days', { n: d }) }))}
               />
             </div>
-          </SectionCard>
-
-          <SectionCard title={t('settings.data')}>
-            <div className="divide-y divide-line">
-              <Row title={t('nav.backup')} description={t('settings.backupHelp')}>
-                <Button size="sm" onClick={() => navigate({ name: 'backup' })}>
-                  {t('settings.open')}
-                </Button>
-              </Row>
-              <Row title={t('nav.sync')} description={t('settings.syncHelp')}>
-                <Button size="sm" onClick={() => navigate({ name: 'sync' })}>
-                  {t('settings.open')}
-                </Button>
-              </Row>
-              <Row title={t('trash.empty')} description={t('settings.emptyTrashHelp')}>
-                <Button size="sm" variant="danger" onClick={() => void emptyTrash()}>
-                  {t('trash.empty')}
-                </Button>
-              </Row>
+            <div className="mt-4 divide-y divide-line border-t border-line pt-2">
               <Row title={t('settings.storage')} description={storage ? t('settings.storageValue', { records: storage.records, snapshots: storage.snapshots, used: storage.usage ? `${(storage.usage / 1024 / 1024).toFixed(1)} MB` : '—' }) : '…'} />
               <Row title={t('settings.deviceName')} description={t('settings.deviceNameHelp')}>
                 <form
@@ -554,7 +564,7 @@ export function SettingsView() {
         {codes && (
           <div className="space-y-4">
             <p className="text-sm text-muted">{t('recoveryCodes.regenerated')}</p>
-            <ol className="grid grid-cols-2 gap-2 rounded-2xl border border-line bg-surface-2 p-4 secret text-[15px]">
+            <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2 p-4 secret text-[15px]">
               {codes.map((c) => (
                 <li key={c} className="rounded-lg bg-surface px-3 py-2 text-center text-fg">
                   {c}

@@ -32,7 +32,7 @@ export interface Prefs {
 
 export const DEFAULT_PREFS: Prefs = {
   theme: 'dark',
-  accent: 'teal',
+  accent: 'blue',
   lang: typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ms') ? 'ms' : 'en',
   motion: 'system',
   density: 'comfortable',
@@ -79,5 +79,5 @@ export function applyPrefsToDocument(p: Prefs): void {
   root.dataset.motion = reduce ? 'reduced' : 'full';
   root.lang = p.lang;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#0b0d12' : '#f5f6f8');
+  if (meta) meta.setAttribute('content', dark ? '#111113' : '#f7f7f8');
 }

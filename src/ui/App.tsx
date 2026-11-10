@@ -10,9 +10,10 @@ export function App() {
   const phase = useApp((s) => s.phase);
   return (
     <>
+      <div className="lg-wallpaper" aria-hidden />
       {phase === 'loading' && (
-        <div className="ambient flex h-full items-center justify-center" aria-busy="true">
-          <Logo className="size-14 animate-pulse" />
+        <div className="flex h-full items-center justify-center" aria-busy="true">
+          <Logo className="size-10 animate-pulse" />
         </div>
       )}
       {phase === 'welcome' && <Onboarding />}

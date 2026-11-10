@@ -81,8 +81,8 @@ export function ItemDetail({ item, onBack }: { item: VaultItem; onBack?: () => v
     ) : null;
 
   return (
-    <div className="animate-fade-in flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2 sm:px-4">
+    <div className="animate-fade-in animate-push flex h-full flex-col">
+      <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
         {onBack && (
           <IconButton label={t('action.back')} onClick={onBack} className="lg:hidden">
             <ArrowLeft className="size-5" />
@@ -170,13 +170,13 @@ export function ItemDetail({ item, onBack }: { item: VaultItem; onBack?: () => v
         </div>
 
         {weak && (
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-fg">
+          <div className="mt-5 flex items-center gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-fg">
             <ShieldAlert className="size-5 shrink-0 text-warning" />
             <span className="min-w-0 flex-1">{t('item.weakWarning')}</span>
           </div>
         )}
 
-        <div className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="mt-6 divide-y divide-line overflow-hidden lg-group">
           {item.type === 'login' && (
             <>
               <PlainRow label={t('field.username')} value={item.username} />
@@ -236,14 +236,14 @@ export function ItemDetail({ item, onBack }: { item: VaultItem; onBack?: () => v
         </div>
 
         {item.type !== 'note' && item.notes && (
-          <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
+          <div className="mt-4 lg-group p-4">
             <p className="text-xs font-medium text-faint">{t('field.notes')}</p>
             <p className="mt-1 whitespace-pre-wrap break-words text-[15px] text-fg select-text">{item.notes}</p>
           </div>
         )}
 
         {(item.recoveryEmail || item.recoveryInfo || item.importantNotes) && (
-          <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+          <div className="mt-4 divide-y divide-line overflow-hidden lg-group">
             <PlainRow label={t('field.recoveryEmail')} value={item.recoveryEmail} />
             {item.recoveryInfo && secret(t('field.recoveryInfo'), item.recoveryInfo, true)}
             {item.importantNotes && (
@@ -255,7 +255,7 @@ export function ItemDetail({ item, onBack }: { item: VaultItem; onBack?: () => v
         )}
 
         {item.passwordHistory && item.passwordHistory.length > 0 && (
-          <div className="mt-4 rounded-2xl border border-line bg-surface">
+          <div className="mt-4 lg-group">
             <button type="button" onClick={() => setHistoryOpen((o) => !o)} aria-expanded={historyOpen} className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-fg cursor-pointer">
               <History className="size-4 text-muted" />
               {t('item.passwordHistory', { n: item.passwordHistory.length })}

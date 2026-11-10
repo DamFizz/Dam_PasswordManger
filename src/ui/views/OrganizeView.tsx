@@ -58,7 +58,7 @@ function CollectionEditor({ value, onClose }: { value: Collection | null; onClos
       }
     >
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface-2 p-3">
+        <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-3">
           <div className="flex size-11 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklab, ${c.color} 18%, transparent)` }}>
             <CollectionIcon name={c.icon} color={c.color} className="size-5" />
           </div>

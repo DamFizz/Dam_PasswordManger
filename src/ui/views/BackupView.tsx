@@ -100,7 +100,7 @@ function RestoreCard() {
   return (
     <SectionCard title={t('backup.restoreTitle')} description={t('backup.restoreHelp')}>
       {!file ? (
-        <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong p-6 text-center hover:border-accent/60">
+        <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line-strong p-6 text-center hover:border-accent/60">
           <Upload className="size-6 text-accent" />
           <span className="text-sm font-medium text-fg">{t('backup.chooseFile')}</span>
           <span className="text-xs text-faint">.myvault</span>
@@ -237,7 +237,7 @@ function CsvImportCard() {
 
   return (
     <SectionCard title={t('csv.title')} description={t('csv.help')}>
-      <div className="mb-4 flex gap-3 rounded-2xl border border-warning/30 bg-warning-soft p-4 text-sm text-fg">
+      <div className="mb-4 flex gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4 text-sm text-fg">
         <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning" />
         <p>{t('csv.warning')}</p>
       </div>
@@ -250,7 +250,7 @@ function CsvImportCard() {
           </Button>
         </div>
       ) : !preview ? (
-        <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-line bg-surface-2 p-4 hover:border-accent/50">
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-surface-2 p-4 hover:border-accent/50">
           <FileSpreadsheet className="size-5 text-accent" />
           <span className="text-sm font-medium text-fg">{t('csv.choose')}</span>
           <input

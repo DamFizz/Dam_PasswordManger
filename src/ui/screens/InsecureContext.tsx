@@ -10,7 +10,7 @@ export function InsecureContext() {
   const t = useT();
   const https = `https://${location.host}${location.pathname}`;
   return (
-    <div className="ambient flex min-h-full items-center justify-center px-5 py-10">
+    <div className="flex min-h-full items-center justify-center px-5 py-10">
       <div className="w-full max-w-md text-center">
         <Logo className="mx-auto mb-6 size-14" />
         <div className="card p-6 text-left">

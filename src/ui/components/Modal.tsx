@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cx } from '../cx';
 import { IconButton } from './Button';
@@ -43,12 +43,31 @@ export function Modal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Keep the content mounted while the closing animation plays (sheet slides down, window fades).
+  const [mounted, setMounted] = useState(open);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
+    if (open) {
+      setMounted(true);
+      delete d.dataset.closing;
+      if (!d.open) d.showModal();
+      return;
+    }
+    if (!d.open) {
+      setMounted(false);
+      return;
+    }
+    const reduced = document.documentElement.dataset.motion === 'reduced';
+    d.dataset.closing = '';
+    const id = window.setTimeout(() => {
+      d.close();
+      delete d.dataset.closing;
+      setMounted(false);
+    }, reduced ? 0 : 230);
+    return () => window.clearTimeout(id);
   }, [open]);
+  const show = open || mounted;
 
   useEffect(() => {
     const d = ref.current;
@@ -72,19 +91,23 @@ export function Modal({
         if (dismissible && e.target === ref.current) onClose();
       }}
     >
-      {open && bare && (
-        <div className={cx('mv-dialog-panel flex h-full flex-col overflow-hidden border border-line bg-surface shadow-strong', className)}>{children}</div>
+      {show && bare && (
+        <div className={cx('glass-strong mv-dialog-panel flex h-full flex-col overflow-hidden', className)} inert={!open} aria-hidden={!open || undefined}>
+          {children}
+        </div>
       )}
-      {open && !bare && (
+      {show && !bare && (
         <div
+          inert={!open}
+          aria-hidden={!open || undefined}
           className={cx(
-            'mv-dialog-panel flex max-h-[92dvh] w-[calc(100vw-1.5rem)] flex-col overflow-hidden border border-line bg-surface shadow-strong',
-            sheet ? 'max-sm:w-screen max-sm:rounded-t-3xl max-sm:rounded-b-none max-sm:border-b-0 sm:rounded-2xl' : 'rounded-2xl',
+            'glass-strong mv-dialog-panel flex max-h-[90dvh] w-[calc(100vw-1.5rem)] flex-col overflow-hidden',
+            sheet ? 'max-sm:w-full rounded-[30px]' : 'rounded-[30px]',
             widths[size],
             className,
           )}
         >
-          {sheet && <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden />}
+          {sheet && <div className="mx-auto mt-1.5 h-[5px] w-9 rounded-full bg-surface-3 sm:hidden" aria-hidden />}
           {(title || dismissible) && (
             <div className="flex items-start gap-3 px-5 pt-4 pb-2 sm:px-6 sm:pt-5">
               <div className="min-w-0 flex-1">
@@ -103,7 +126,7 @@ export function Modal({
             </div>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-2 sm:px-6">{children}</div>
-          {footer && <div className="safe-bottom flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 sm:px-6">{footer}</div>}
+          {footer && <div className="flex flex-wrap items-center justify-end gap-2 px-5 pb-5 pt-3 sm:px-6">{footer}</div>}
         </div>
       )}
     </dialog>

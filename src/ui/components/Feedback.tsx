@@ -18,14 +18,14 @@ export function Toaster() {
   const t = useT();
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:items-end md:pb-6 md:pr-6"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4rem)] md:top-auto md:bottom-0 md:items-end md:pt-0 md:pb-6 md:pr-6"
       aria-live="polite"
       role="status"
     >
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="animate-toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl border border-line bg-surface-2/95 px-4 py-3 shadow-strong backdrop-blur"
+          className="animate-toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 glass-strong rounded-full py-2.5 pl-4 pr-2"
         >
           {toast.kind === 'error' ? (
             <CircleAlert className="size-5 shrink-0 text-danger" aria-hidden />
@@ -171,11 +171,8 @@ export function ReauthHost() {
 export function EmptyState({ icon, title, children, action }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="animate-fade-in mx-auto flex max-w-sm flex-col items-center px-6 py-16 text-center">
-      <div className="relative mb-5">
-        <div className="absolute inset-0 rounded-3xl bg-accent-gradient opacity-25 blur-2xl" aria-hidden />
-        <div className="relative flex size-16 items-center justify-center rounded-3xl border border-line bg-surface-2 text-accent">{icon}</div>
-      </div>
-      <h3 className="text-lg font-semibold text-fg">{title}</h3>
+      <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-surface-2 text-muted [&>svg]:size-6">{icon}</div>
+      <h3 className="text-base font-semibold text-fg">{title}</h3>
       {children && <div className="mt-2 text-sm leading-relaxed text-muted">{children}</div>}
       {action && <div className="mt-6">{action}</div>}
     </div>

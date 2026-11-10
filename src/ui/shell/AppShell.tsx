@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Command, Home, Layers, LockKeyhole, Menu as MenuIcon, Plus, Search, ShieldCheck, WandSparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronLeft, KeyRound, LockKeyhole, Menu as MenuIcon, Plus, Search, Settings, ShieldCheck, WandSparkles, X } from 'lucide-react';
 import { useT } from '../../i18n';
-import { app, lock, navigate, openEditor, useApp, type Route } from '../../state/app';
-import { IconButton } from '../components/Button';
+import { app, HOME, lock, navigate, openEditor, useApp, type Route } from '../../state/app';
 import { Modal } from '../components/Modal';
 import { cx } from '../cx';
 import { ItemEditor } from '../items/ItemEditor';
-import { NewItemMenu, NewItemPicker } from '../items/NewItemMenu';
-import { DashboardView } from '../views/DashboardView';
 import { ItemsView } from '../views/ItemsView';
 import { GeneratorView } from '../views/GeneratorView';
 import { SecurityView } from '../views/SecurityView';
@@ -16,13 +13,12 @@ import { SettingsView } from '../views/SettingsView';
 import { BackupView } from '../views/BackupView';
 import { OrganizeView } from '../views/OrganizeView';
 import { Sidebar } from './Sidebar';
-import { SyncPill } from './SyncPill';
-import { BackupReminder } from './BackupReminder';
+
+/** Pages reached from Settings show a "back to Settings" link. */
+const SETTINGS_CHILDREN = new Set<Route['name']>(['sync', 'backup', 'organize']);
 
 function RouteView({ route }: { route: Route }) {
   switch (route.name) {
-    case 'dashboard':
-      return <DashboardView />;
     case 'items':
       return <ItemsView filter={route.filter} />;
     case 'generator':
@@ -50,8 +46,18 @@ export function AppShell() {
   const route = useApp((s) => s.route);
   const search = useApp((s) => s.search);
   const editor = useApp((s) => s.editor);
+  // Keep the editor mounted briefly after it closes so its sheet can slide away.
+  const [editorView, setEditorView] = useState<{ editor: NonNullable<typeof editor>; key: number } | null>(null);
+  useEffect(() => {
+    if (editor) {
+      setEditorView((v) => ({ editor, key: (v?.key ?? 0) + 1 }));
+      return;
+    }
+    const id = window.setTimeout(() => setEditorView(null), 320);
+    return () => window.clearTimeout(id);
+  }, [editor]);
+  const collections = useApp((s) => s.collections);
   const [drawer, setDrawer] = useState(false);
-  const [picker, setPicker] = useState(false);
   const [help, setHelp] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -91,7 +97,7 @@ export function AppShell() {
         focusSearch();
       } else if (e.key === 'n' && !mod && !e.altKey) {
         e.preventDefault();
-        setPicker(true);
+        openEditor({ mode: 'new', type: 'login' });
       } else if (e.key === '?') {
         setHelp(true);
       } else if (e.key === 'Escape') {
@@ -105,21 +111,35 @@ export function AppShell() {
   // Typing in search jumps to the item list.
   const onSearch = (value: string) => {
     app.set({ search: value });
-    const r = app.get().route;
-    if (value && r.name !== 'items') app.set({ route: { name: 'items', filter: { kind: 'all' } }, selectedId: null });
+    if (value && app.get().route.name !== 'items') app.set({ route: HOME, selectedId: null });
   };
 
+  const title =
+    route.name === 'items'
+      ? route.filter.kind === 'favorites'
+        ? t('nav.favorites')
+        : route.filter.kind === 'section'
+          ? (collections.find((c) => c.id === (route.filter as { id: string }).id)?.name ?? t('nav.all'))
+          : t('nav.all')
+      : route.name === 'generator'
+        ? t('nav.generatorShort')
+        : route.name === 'security'
+          ? t('nav.securityShort')
+          : t('nav.settings');
+
+  const tab = route.name === 'items' ? 'vault' : route.name === 'generator' ? 'generator' : route.name === 'security' ? 'security' : 'settings';
+
   return (
-    <div className="flex h-full overflow-hidden bg-bg">
-      <div className="hidden md:flex">
+    <div className="animate-unlock flex h-full overflow-hidden md:gap-3 md:p-3">
+      <div className="glass hidden overflow-hidden rounded-[26px] md:flex">
         <Sidebar />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Desktop top bar */}
-        <header className="hidden h-16 shrink-0 items-center gap-3 border-b border-line bg-bg/80 px-6 backdrop-blur md:flex">
-          <div className="relative w-full max-w-xl">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
+        {/* Desktop: floating glass search capsule */}
+        <header className="hidden shrink-0 items-center gap-3 pb-3 md:flex">
+          <div className="glass-clear relative h-11 w-full max-w-md rounded-full">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
             <input
               ref={searchRef}
               type="search"
@@ -129,28 +149,22 @@ export function AppShell() {
               aria-label={t('search.label')}
               autoComplete="off"
               spellCheck={false}
-              className="h-10 w-full rounded-xl border border-line bg-surface pl-10 pr-20 text-sm text-fg placeholder:text-faint transition-colors focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
+              className="h-full w-full rounded-full bg-transparent pl-10 pr-16 text-[15px] text-fg placeholder:text-muted focus:outline-none"
             />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] text-faint lg:inline-flex">
-              <Command className="size-3" />K
-            </kbd>
+            <kbd className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 text-[11px] text-faint lg:inline">Ctrl K</kbd>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <SyncPill className="hidden lg:flex" />
-            <IconButton label={t('shortcuts.title')} onClick={() => setHelp(true)} className="hidden lg:inline-flex">
-              <span className="text-sm font-semibold">?</span>
-            </IconButton>
-            <NewItemMenu />
-          </div>
+          <button type="button" aria-label={t('shortcuts.title')} title={t('shortcuts.title')} onClick={() => setHelp(true)} className="glass-clear pressable ml-auto hidden size-11 items-center justify-center rounded-full text-[15px] font-semibold text-fg lg:flex cursor-pointer">
+            ?
+          </button>
         </header>
 
-        {/* Mobile header */}
-        <header className="safe-top flex shrink-0 items-center gap-2 border-b border-line bg-bg/90 px-3 backdrop-blur md:hidden">
-          <div className="flex h-14 w-full items-center gap-2">
+        {/* Phone: floating glass buttons instead of a bar */}
+        <header className="safe-top shrink-0 md:hidden">
+          <div className="flex h-16 items-center gap-2 px-4">
             {mobileSearch ? (
               <>
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
+                <div className="glass-clear relative h-12 flex-1 rounded-full">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
                   <input
                     ref={mobileSearchRef}
                     type="search"
@@ -159,10 +173,10 @@ export function AppShell() {
                     placeholder={t('search.placeholder')}
                     aria-label={t('search.label')}
                     autoComplete="off"
-                    className="h-10 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-[16px] text-fg placeholder:text-faint focus:border-accent focus:outline-none"
+                    className="h-full w-full rounded-full bg-transparent pl-10 pr-4 text-[16px] text-fg placeholder:text-muted focus:outline-none"
                   />
                 </div>
-                <IconButton
+                <GlassButton
                   label={t('action.close')}
                   onClick={() => {
                     setMobileSearch(false);
@@ -170,75 +184,99 @@ export function AppShell() {
                   }}
                 >
                   <X className="size-5" />
-                </IconButton>
+                </GlassButton>
               </>
             ) : (
               <>
-                <IconButton label={t('nav.menu')} onClick={() => setDrawer(true)}>
-                  <MenuIcon className="size-5" />
-                </IconButton>
-                <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold">MyVault</h1>
-                <IconButton label={t('search.label')} onClick={focusSearch}>
-                  <Search className="size-5" />
-                </IconButton>
-                <SyncPill compact />
-                <IconButton label={t('action.lockNow')} onClick={() => lock('manual')} tone="accent">
-                  <LockKeyhole className="size-5" />
-                </IconButton>
+                {tab === 'vault' ? (
+                  <GlassButton label={t('nav.menu')} onClick={() => setDrawer(true)}>
+                    <MenuIcon className="size-5" />
+                  </GlassButton>
+                ) : null}
+                <span className="min-w-0 flex-1" aria-hidden>
+                  <span className="sr-only">{title}</span>
+                </span>
+                <div className="glass-clear flex h-12 items-center rounded-full px-1">
+                  <button type="button" aria-label={t('search.label')} title={t('search.label')} onClick={focusSearch} className="pressable flex size-10 items-center justify-center rounded-full text-fg cursor-pointer">
+                    <Search className="size-5" />
+                  </button>
+                  <button type="button" aria-label={t('action.lockNow')} title={t('action.lockNow')} onClick={() => lock('manual')} className="pressable flex size-10 items-center justify-center rounded-full text-fg cursor-pointer">
+                    <LockKeyhole className="size-5" />
+                  </button>
+                </div>
               </>
             )}
           </div>
         </header>
 
-        <BackupReminder />
-
         <main className="relative min-h-0 flex-1 overflow-hidden">
-          <RouteView route={route} />
+          {SETTINGS_CHILDREN.has(route.name) ? (
+            <div className="flex h-full flex-col">
+              <div className="shrink-0 px-4 pt-2 sm:px-6">
+                <button type="button" onClick={() => navigate({ name: 'settings' })} className="glass-clear pressable inline-flex h-10 items-center gap-0.5 rounded-full pl-2 pr-4 text-[15px] font-medium text-fg cursor-pointer">
+                  <ChevronLeft className="size-5" />
+                  {t('nav.settings')}
+                </button>
+              </div>
+              <div className="min-h-0 flex-1">
+                <RouteView route={route} />
+              </div>
+            </div>
+          ) : (
+            <div key={route.name} className="animate-page h-full">
+              <RouteView route={route} />
+            </div>
+          )}
         </main>
 
-        {/* Mobile bottom navigation */}
-        <nav aria-label={t('nav.main')} className="safe-bottom relative z-30 shrink-0 border-t border-line bg-surface/95 backdrop-blur md:hidden">
-          <div className="grid h-16 grid-cols-5">
-            <BottomTab icon={<Home className="size-[22px]" />} label={t('nav.home')} active={route.name === 'dashboard'} onClick={() => navigate({ name: 'dashboard' })} />
-            <BottomTab icon={<Layers className="size-[22px]" />} label={t('nav.vault')} active={route.name === 'items'} onClick={() => navigate({ name: 'items', filter: { kind: 'all' } })} />
-            <div className="flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => setPicker(true)}
-                aria-label={t('item.new')}
-                className="bg-accent-gradient flex size-14 -translate-y-4 items-center justify-center rounded-2xl text-on-accent shadow-strong ring-4 ring-bg transition-transform active:scale-95 cursor-pointer"
-              >
-                <Plus className="size-7" />
-              </button>
-            </div>
-            <BottomTab icon={<WandSparkles className="size-[22px]" />} label={t('nav.generatorShort')} active={route.name === 'generator'} onClick={() => navigate({ name: 'generator' })} />
-            <BottomTab icon={<ShieldCheck className="size-[22px]" />} label={t('nav.securityShort')} active={route.name === 'security'} onClick={() => navigate({ name: 'security' })} />
-          </div>
-        </nav>
+        {/* Phone: floating glass tab bar + add button */}
+        <div className="pointer-events-none fixed inset-x-0 z-30 flex items-end gap-2.5 px-4 md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
+          <nav aria-label={t('nav.main')} className="glass-strong pointer-events-auto grid h-[64px] flex-1 grid-cols-4 rounded-full p-1">
+            <BottomTab icon={<KeyRound className="size-[22px]" />} label={t('nav.vault')} active={tab === 'vault'} onClick={() => navigate(HOME)} />
+            <BottomTab icon={<WandSparkles className="size-[22px]" />} label={t('nav.generatorShort')} active={tab === 'generator'} onClick={() => navigate({ name: 'generator' })} />
+            <BottomTab icon={<ShieldCheck className="size-[22px]" />} label={t('nav.securityShort')} active={tab === 'security'} onClick={() => navigate({ name: 'security' })} />
+            <BottomTab icon={<Settings className="size-[22px]" />} label={t('nav.settings')} active={tab === 'settings'} onClick={() => navigate({ name: 'settings' })} />
+          </nav>
+          {tab === 'vault' && (
+            <button type="button" onClick={() => openEditor({ mode: 'new', type: 'login' })} aria-label={t('item.new')} className="glass-tint pressable pointer-events-auto flex size-[64px] shrink-0 items-center justify-center rounded-full cursor-pointer">
+              <Plus className="size-7" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Mobile drawer */}
-      <Modal open={drawer} onClose={() => setDrawer(false)} placement="left" bare className="safe-top w-[86vw] max-w-[320px] rounded-r-3xl border-l-0">
-        <Sidebar variant="drawer" onNavigate={() => setDrawer(false)} />
+      {/* Phone folder drawer */}
+      <Modal open={drawer} onClose={() => setDrawer(false)} placement="left" bare className="w-[82vw] max-w-[300px] rounded-[26px]">
+        <div className="safe-top h-full">
+          <Sidebar variant="drawer" onNavigate={() => setDrawer(false)} />
+        </div>
       </Modal>
 
-      <NewItemPicker
-        open={picker}
-        onClose={() => setPicker(false)}
-        onPick={(type) => {
-          setPicker(false);
-          openEditor({ mode: 'new', type });
-        }}
-      />
-      {editor && <ItemEditor editor={editor} />}
+      {editorView && <ItemEditor key={editorView.key} editor={editorView.editor} open={!!editor} />}
       <ShortcutsHelp open={help} onClose={() => setHelp(false)} />
     </div>
   );
 }
 
-function BottomTab({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+function GlassButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined} className={cx('flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium cursor-pointer', active ? 'text-accent' : 'text-faint')}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className="glass-clear pressable flex size-12 shrink-0 items-center justify-center rounded-full text-fg cursor-pointer">
+      {children}
+    </button>
+  );
+}
+
+function BottomTab({ icon, label, active, onClick }: { icon: ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={cx(
+        'pressable flex flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold transition-colors duration-300 cursor-pointer',
+        active ? 'bg-[var(--seg-thumb)] text-accent shadow-[inset_0_1px_0_var(--glass-sheen)]' : 'text-fg/75',
+      )}
+    >
       {icon}
       {label}
     </button>
@@ -249,11 +287,9 @@ function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }
   const t = useT();
   const rows: [string, string][] = [
     ['Ctrl / ⌘ + K', t('shortcuts.search')],
-    ['/', t('shortcuts.search')],
     ['N', t('shortcuts.new')],
     ['Ctrl / ⌘ + Shift + L', t('shortcuts.lock')],
     ['Esc', t('shortcuts.close')],
-    ['?', t('shortcuts.help')],
   ];
   return (
     <Modal open={open} onClose={onClose} title={t('shortcuts.title')} size="sm">
@@ -262,7 +298,7 @@ function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }
           <div key={k + v} className="flex items-center justify-between py-2.5">
             <dt className="text-sm text-muted">{v}</dt>
             <dd>
-              <kbd className="rounded-md border border-line bg-surface-2 px-2 py-0.5 text-xs text-fg">{k}</kbd>
+              <kbd className="rounded border border-line bg-surface-2 px-2 py-0.5 text-xs text-fg">{k}</kbd>
             </dd>
           </div>
         ))}

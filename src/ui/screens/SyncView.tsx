@@ -43,7 +43,7 @@ export function GoogleSetupHelp({ compact }: { compact?: boolean }) {
   const [saved, setSaved] = useState(false);
   const valid = !value || isValidClientId(value);
   return (
-    <div className={cx('rounded-2xl border border-line bg-surface-2/60 p-4 text-sm', compact && 'text-[13px]')}>
+    <div className={cx('rounded-xl border border-line bg-surface-2/60 p-4 text-sm', compact && 'text-[13px]')}>
       <p className="flex items-center gap-2 font-medium text-fg">
         <Info className="size-4 text-accent" />
         {t('google.setupTitle')}
@@ -143,7 +143,7 @@ export function SyncView() {
         <div className="space-y-4">
           <SectionCard>
             <div className="flex flex-wrap items-center gap-4">
-              <div className={cx('flex size-12 items-center justify-center rounded-2xl', connected ? 'bg-accent-soft text-accent' : 'bg-surface-3 text-muted')}>{connected ? <Cloud className="size-6" /> : <CloudOff className="size-6" />}</div>
+              <div className={cx('flex size-12 items-center justify-center rounded-xl', connected ? 'bg-accent-soft text-accent' : 'bg-surface-3 text-muted')}>{connected ? <Cloud className="size-6" /> : <CloudOff className="size-6" />}</div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-fg">{t('sync.googleDrive')}</p>
                 <p className={cx('mt-0.5 flex items-center gap-1.5 text-sm', statusLine.tone)}>
@@ -204,7 +204,7 @@ export function SyncView() {
             )}
 
             {status === 'mismatch' && (
-              <div role="alert" className="mt-4 rounded-2xl border border-danger/30 bg-danger-soft p-4 text-sm">
+              <div role="alert" className="mt-4 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm">
                 <p className="font-medium text-fg">{t('sync.mismatch.title')}</p>
                 <p className="mt-1 text-muted">{t('sync.mismatch.body')}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -290,17 +290,17 @@ export function SyncView() {
 
           <SectionCard title={t('sync.where.title')}>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-line bg-surface-2/60 p-4">
+              <div className="rounded-xl border border-line bg-surface-2/60 p-4">
                 <HardDrive className="size-5 text-accent" />
                 <p className="mt-2 text-sm font-medium text-fg">{t('sync.where.local')}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted">{t('sync.where.localBody', { n: records ?? '…' })}</p>
               </div>
-              <div className="rounded-2xl border border-line bg-surface-2/60 p-4">
+              <div className="rounded-xl border border-line bg-surface-2/60 p-4">
                 <Cloud className="size-5 text-accent" />
                 <p className="mt-2 text-sm font-medium text-fg">{t('sync.where.cloud')}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted">{connected ? t('sync.where.cloudBody') : t('sync.where.cloudOff')}</p>
               </div>
-              <div className="rounded-2xl border border-line bg-surface-2/60 p-4">
+              <div className="rounded-xl border border-line bg-surface-2/60 p-4">
                 <ShieldCheck className="size-5 text-accent" />
                 <p className="mt-2 text-sm font-medium text-fg">{t('sync.where.backup')}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted">{t('sync.where.backupBody')}</p>
@@ -347,7 +347,7 @@ export function SyncView() {
 
           <GoogleSetupHelp />
 
-          <div className="flex items-start gap-3 rounded-2xl border border-line p-4 text-xs leading-relaxed text-muted">
+          <div className="flex items-start gap-3 rounded-xl border border-line p-4 text-xs leading-relaxed text-muted">
             <Info className="mt-0.5 size-4 shrink-0 text-faint" />
             <div className="space-y-1.5">
               <p>{t('sync.note.encryption')}</p>

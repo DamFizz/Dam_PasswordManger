@@ -16,9 +16,8 @@ describe('MyVault UI (end-to-end in jsdom)', () => {
     await boot();
     render(<App />);
 
-    // Welcome → how it works → master password
+    // Welcome → master password
     await user.click(await screen.findByRole('button', { name: /create a new vault/i }));
-    await user.click(screen.getByRole('button', { name: /continue/i }));
     await user.type(screen.getByLabelText('Master password'), MASTER);
     await user.type(screen.getByLabelText('Confirm password'), MASTER);
     const create = screen.getByRole('button', { name: /create vault/i });
@@ -26,15 +25,13 @@ describe('MyVault UI (end-to-end in jsdom)', () => {
     await user.click(screen.getByRole('checkbox'));
     await user.click(create);
 
-    // Optional steps can be skipped
+    // The recovery key step is optional; the vault opens straight on the item list
     await user.click(await screen.findByRole('button', { name: /skip for now/i }, { timeout: 10000 }));
-    await user.click(await screen.findByRole('button', { name: /skip for now/i }));
-    await user.click(await screen.findByRole('button', { name: /maybe later/i }));
-    await user.click(await screen.findByRole('button', { name: /open my vault/i }));
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+    expect((await screen.findAllByRole('heading', { name: 'All items' })).length).toBeGreaterThan(0);
+    expect(screen.getByText('Finish setting up')).toBeInTheDocument();
 
     // Add a login
-    await user.click(screen.getByRole('button', { name: /add an account/i }));
+    await user.click(screen.getByRole('button', { name: /add a password/i }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText('Title'), 'Instagram');
     await user.type(within(dialog).getByLabelText('Website URL'), 'instagram.com');
@@ -90,7 +87,7 @@ describe('MyVault UI (end-to-end in jsdom)', () => {
     await user.clear(screen.getByLabelText('Master password'));
     await user.type(screen.getByLabelText('Master password'), MASTER);
     await user.click(screen.getByRole('button', { name: /^unlock$/i }));
-    expect(await screen.findByRole('heading', { name: 'Overview' }, { timeout: 10000 })).toBeInTheDocument();
+    expect((await screen.findAllByRole('heading', { name: 'All items' }, { timeout: 10000 })).length).toBeGreaterThan(0);
     expect(app.get().items.map((i) => i.title)).toEqual(['Instagram']);
   });
 });

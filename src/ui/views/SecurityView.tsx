@@ -33,6 +33,7 @@ function IssueGroup({ icon, title, description, items, tone, extra, label }: { i
   const t = useT();
   const collections = useApp((s) => s.collections);
   const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
   const tones = { danger: 'bg-danger-soft text-danger', warning: 'bg-warning-soft text-warning', default: 'bg-surface-3 text-muted' };
   const shown = open ? items : items.slice(0, 4);
   return (
@@ -168,7 +169,7 @@ export function SecurityView() {
             {breach.running && (
               <div className="mt-4">
                 <div className="h-2 overflow-hidden rounded-full bg-surface-3">
-                  <div className="h-full bg-accent-gradient transition-[width]" style={{ width: `${breach.total ? (breach.done / breach.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-accent transition-[width]" style={{ width: `${breach.total ? (breach.done / breach.total) * 100 : 0}%` }} />
                 </div>
                 <p className="mt-1.5 text-xs text-muted">{t('breach.progress', { done: breach.done, total: breach.total })}</p>
               </div>

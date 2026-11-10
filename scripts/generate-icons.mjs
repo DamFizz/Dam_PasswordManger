@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const svg = readFileSync(new URL('../public/favicon.svg', import.meta.url));
 const out = (name) => fileURLToPath(new URL(`../public/${name}`, import.meta.url));
-const bg = { r: 11, g: 13, b: 18, alpha: 1 };
+const bg = { r: 17, g: 17, b: 19, alpha: 1 };
 
 for (const size of [64, 192, 512]) {
   await sharp(svg, { density: 512 }).resize(size, size).png().toFile(out(`pwa-${size}x${size}.png`));

@@ -40,6 +40,8 @@ export function itemSubtitle(item: VaultItem, typeLabel: string): string {
   }
 }
 
+export const ITEM_TYPES: ItemType[] = ['login', 'note', 'wifi', 'recoveryCodes', 'license', 'custom'];
+
 export const TYPE_LABEL_KEYS: Record<ItemType, TKey> = {
   login: 'type.login',
   note: 'type.note',

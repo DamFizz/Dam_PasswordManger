@@ -13,11 +13,11 @@ export function RecoveryKeyDisplay({ recoveryKey, onDone }: { recoveryKey: strin
   const text = `${t('recoveryKey.fileHeader')}\n${new Date().toLocaleString()}\n\n${recoveryKey}\n\n${t('recoveryKey.fileFooter')}\n`;
   return (
     <div className="animate-fade-in space-y-5">
-      <div className="flex gap-3 rounded-2xl border border-warning/30 bg-warning-soft p-4">
+      <div className="flex gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4">
         <LifeBuoy className="mt-0.5 size-5 shrink-0 text-warning" />
         <p className="text-sm text-fg">{t('recoveryKey.warning')}</p>
       </div>
-      <div className="rounded-2xl border border-line bg-surface-2 p-5 text-center">
+      <div className="rounded-xl border border-line bg-surface-2 p-5 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-faint">{t('recoveryKey.title')}</p>
         <p className="secret mt-3 break-all text-lg font-semibold tracking-wider text-fg select-all sm:text-xl">{recoveryKey}</p>
       </div>

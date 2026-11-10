@@ -117,18 +117,15 @@ export function LockScreen() {
             : null;
 
   return (
-    <div className="ambient flex min-h-full flex-col items-center justify-center px-4 py-10">
-      <div key={shake} className={cx('w-full max-w-sm', shake > 0 && 'animate-shake')}>
+    <div className="flex min-h-full flex-col items-center justify-center px-5 py-10">
+      <div key={shake} className={cx('glass w-full max-w-sm rounded-[32px] p-7 sm:p-8', shake > 0 && 'animate-shake')}>
         <div className="mb-8 text-center">
-          <div className="relative mx-auto mb-5 w-fit">
-            <div className="absolute inset-0 scale-125 rounded-full bg-accent-gradient opacity-25 blur-2xl" aria-hidden />
-            <Logo className="relative size-16" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">{challenge ? t('lock.twoStep') : t('lock.title')}</h1>
+          <Logo className="mx-auto mb-5 size-12" />
+          <h1 className="text-[26px] font-bold tracking-tight">{challenge ? t('lock.twoStep') : t('lock.title')}</h1>
           <p className="mt-1.5 text-sm text-muted">{challenge ? (useRecovery ? t('lock.enterRecovery') : t('lock.enterCode')) : (reasonText ?? t('lock.subtitle'))}</p>
         </div>
 
-        <div className="card p-5 sm:p-6">
+        <div>
           {!challenge ? (
             <form
               className="space-y-4"
@@ -301,7 +298,7 @@ function ForgotPasswordDialog({ open, onClose, onStep }: { open: boolean; onClos
               type="button"
               disabled={!hasKey}
               onClick={() => setMode('key')}
-              className="flex w-full items-start gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              className="flex w-full items-start gap-3 rounded-xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               <KeyRound className="mt-0.5 size-5 shrink-0 text-accent" />
               <div>
@@ -309,7 +306,7 @@ function ForgotPasswordDialog({ open, onClose, onStep }: { open: boolean; onClos
                 <p className="mt-0.5 text-sm text-muted">{hasKey ? t('forgot.useKeyBody') : t('forgot.noKey')}</p>
               </div>
             </button>
-            <button type="button" onClick={() => setMode('backup')} className="flex w-full items-start gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 cursor-pointer">
+            <button type="button" onClick={() => setMode('backup')} className="flex w-full items-start gap-3 rounded-xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 cursor-pointer">
               <LifeBuoy className="mt-0.5 size-5 shrink-0 text-accent" />
               <div>
                 <p className="font-medium text-fg">{t('forgot.useBackup')}</p>
@@ -317,7 +314,7 @@ function ForgotPasswordDialog({ open, onClose, onStep }: { open: boolean; onClos
               </div>
             </button>
           </div>
-          <div className="rounded-2xl border border-danger/30 bg-danger-soft p-4 text-sm text-fg">
+          <div className="rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm text-fg">
             <p>{t('forgot.noBackdoor')}</p>
             <button
               type="button"

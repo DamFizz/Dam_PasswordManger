@@ -14,7 +14,7 @@ export const toastStore = createStore<{ toasts: Toast[] }>({ toasts: [] });
 
 export function toast(message: string, opts: Partial<Omit<Toast, 'id' | 'message'>> = {}): string {
   const t: Toast = { id: randomId(), message, kind: opts.kind ?? 'success', action: opts.action, duration: opts.duration ?? (opts.action ? 6000 : 3000) };
-  toastStore.set((s) => ({ toasts: [...s.toasts.slice(-3), t] }));
+  toastStore.set((s) => ({ toasts: [...s.toasts.filter((x) => x.message !== message).slice(-3), t] }));
   window.setTimeout(() => dismissToast(t.id), t.duration);
   return t.id;
 }

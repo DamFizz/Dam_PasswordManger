@@ -11,8 +11,7 @@ import { Modal } from '../components/Modal';
 import { PasswordInput } from '../components/Secret';
 import { cx } from '../cx';
 import { ITEM_TYPE_ICONS } from '../icons';
-import { allTags, safeHttpUrl, sectionOptions, TYPE_LABEL_KEYS } from './helpers';
-import { ITEM_TYPES } from './NewItemMenu';
+import { allTags, ITEM_TYPES, safeHttpUrl, sectionOptions, TYPE_LABEL_KEYS } from './helpers';
 
 const WIFI_SECURITY = ['WPA3', 'WPA2', 'WPA/WPA2', 'WEP', 'Open'];
 
@@ -79,7 +78,7 @@ function CustomFieldsEditor({ fields, onChange }: { fields: CustomField[]; onCha
   return (
     <div className="space-y-3">
       {fields.map((f) => (
-        <div key={f.id} className="rounded-2xl border border-line bg-surface-2/50 p-3">
+        <div key={f.id} className="rounded-xl border border-line bg-surface-2/50 p-3">
           <div className="flex items-end gap-2">
             <TextField label={t('field.customLabel')} value={f.label} onChange={(e) => update(f.id, { label: e.target.value })} wrapClassName="flex-1" placeholder={t('field.customLabelPlaceholder')} />
             <IconButton label={t('action.removeField')} tone="danger" onClick={() => onChange(fields.filter((x) => x.id !== f.id))} className="mb-0.5">
@@ -108,8 +107,8 @@ function CustomFieldsEditor({ fields, onChange }: { fields: CustomField[]; onCha
 function Disclosure({ title, children, defaultOpen }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div className="rounded-2xl border border-line">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-fg cursor-pointer">
+    <div className="rounded-xl border border-line">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-fg cursor-pointer">
         {open ? <ChevronDown className="size-4 text-muted" /> : <ChevronRight className="size-4 text-muted" />}
         {title}
       </button>
@@ -118,7 +117,7 @@ function Disclosure({ title, children, defaultOpen }: { title: string; children:
   );
 }
 
-export function ItemEditor({ editor }: { editor: EditorState }) {
+export function ItemEditor({ editor, open = true }: { editor: EditorState; open?: boolean }) {
   const t = useT();
   const items = useApp((s) => s.items);
   const collections = useApp((s) => s.collections);
@@ -139,6 +138,9 @@ export function ItemEditor({ editor }: { editor: EditorState }) {
   const sections = sectionOptions(collections);
   const tagSuggestions = useMemo(() => allTags(items), [items]);
   const TypeIcon = ITEM_TYPE_ICONS[item.type];
+  const hasExtras =
+    item.type === 'custom' ||
+    !!(item.categoryId || item.sectionId || item.tags.length || item.recoveryEmail || item.recoveryInfo || item.importantNotes || item.customFields.length || item.reprompt);
 
   const close = async () => {
     if (dirty && !(await confirmDialog({ title: t('editor.discard.title'), message: t('editor.discard.message'), confirmLabel: t('editor.discard.confirm'), danger: true }))) return;
@@ -198,14 +200,12 @@ export function ItemEditor({ editor }: { editor: EditorState }) {
 
   return (
     <Modal
-      open
+      open={open}
       onClose={() => void close()}
       size="lg"
       title={
-        <span className="flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
-            <TypeIcon className="size-4" />
-          </span>
+        <span className="flex items-center gap-2">
+          <TypeIcon className="size-4 text-muted" />
           {isNew ? t('editor.newTitle', { type: t(TYPE_LABEL_KEYS[item.type]) }) : t('editor.editTitle')}
         </span>
       }
@@ -238,25 +238,12 @@ export function ItemEditor({ editor }: { editor: EditorState }) {
         autoComplete="off"
       >
         {isNew && (
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label={t('editor.type')}>
-            {ITEM_TYPES.map((type) => {
-              const Icon = ITEM_TYPE_ICONS[type];
-              const active = item.type === type;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => set('type', type as ItemType)}
-                  className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm cursor-pointer', active ? 'border-accent bg-accent-soft text-fg' : 'border-line text-muted hover:text-fg')}
-                >
-                  <Icon className="size-4" />
-                  {t(TYPE_LABEL_KEYS[type])}
-                </button>
-              );
-            })}
-          </div>
+          <SelectField
+            label={t('editor.type')}
+            value={item.type}
+            onChange={(e) => set('type', e.target.value as ItemType)}
+            options={ITEM_TYPES.map((type) => ({ value: type, label: t(TYPE_LABEL_KEYS[type]) }))}
+          />
         )}
 
         <TextField label={t('field.title')} value={item.title} onChange={(e) => set('title', e.target.value)} placeholder={t(`editor.titlePlaceholder.${item.type}` as 'editor.titlePlaceholder.login')} autoFocus={isNew} error={errors.title} maxLength={200} />
@@ -308,32 +295,21 @@ export function ItemEditor({ editor }: { editor: EditorState }) {
           rows={item.type === 'note' ? 10 : 3}
         />
 
-        {orgFields}
-
-        {(item.type === 'login' || item.type === 'custom') && (
-          <Disclosure title={t('editor.more')} defaultOpen={item.type === 'custom' || !!(item.recoveryEmail || item.recoveryInfo || item.importantNotes || item.customFields.length)}>
-            {item.type === 'login' && (
-              <>
-                <TextField label={t('field.recoveryEmail')} type="email" value={item.recoveryEmail ?? ''} onChange={(e) => set('recoveryEmail', e.target.value)} autoCapitalize="none" />
-                <TextArea label={t('field.recoveryInfo')} value={item.recoveryInfo ?? ''} onChange={(e) => set('recoveryInfo', e.target.value)} rows={2} help={t('field.recoveryInfoHelp')} />
-                <TextArea label={t('field.importantNotes')} value={item.importantNotes ?? ''} onChange={(e) => set('importantNotes', e.target.value)} rows={2} />
-              </>
-            )}
-            <div>
-              <p className="mb-2 text-[13px] font-medium text-muted">{t('field.customFields')}</p>
-              <CustomFieldsEditor fields={item.customFields} onChange={(f) => set('customFields', f)} />
-            </div>
-          </Disclosure>
-        )}
-        {item.type !== 'login' && item.type !== 'custom' && (
-          <Disclosure title={t('field.customFields')} defaultOpen={item.customFields.length > 0}>
+        <Disclosure title={t('editor.more')} defaultOpen={hasExtras}>
+          {orgFields}
+          {item.type === 'login' && (
+            <>
+              <TextField label={t('field.recoveryEmail')} type="email" value={item.recoveryEmail ?? ''} onChange={(e) => set('recoveryEmail', e.target.value)} autoCapitalize="none" />
+              <TextArea label={t('field.recoveryInfo')} value={item.recoveryInfo ?? ''} onChange={(e) => set('recoveryInfo', e.target.value)} rows={2} help={t('field.recoveryInfoHelp')} />
+              <TextArea label={t('field.importantNotes')} value={item.importantNotes ?? ''} onChange={(e) => set('importantNotes', e.target.value)} rows={2} />
+            </>
+          )}
+          <div>
+            <p className="mb-2 text-[13px] font-medium text-muted">{t('field.customFields')}</p>
             <CustomFieldsEditor fields={item.customFields} onChange={(f) => set('customFields', f)} />
-          </Disclosure>
-        )}
-
-        <div className="rounded-2xl border border-line px-4 py-1">
+          </div>
           <Switch checked={item.reprompt} onChange={(v) => set('reprompt', v)} label={t('field.reprompt')} description={t('field.repromptHelp')} />
-        </div>
+        </Disclosure>
         <button type="submit" hidden />
       </form>
     </Modal>

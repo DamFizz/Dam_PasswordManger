@@ -88,7 +88,6 @@ export function GeneratorView() {
 
         <section className="card overflow-hidden">
           <div className="relative bg-surface-2/60 p-5 sm:p-6">
-            <div className="absolute inset-x-0 top-0 h-1 bg-accent-gradient" aria-hidden />
             <p className="secret min-h-[3.5rem] break-all text-xl leading-relaxed font-medium sm:text-2xl" aria-live="polite" aria-label={t('generator.result')}>
               {value ? <Colored value={value} /> : <span className="text-faint">{error ?? '—'}</span>}
             </p>
@@ -224,7 +223,7 @@ function SaveGeneratedDialog({ open, onClose, value }: { open: boolean; onClose:
             onClose();
             openEditor({ mode: 'new', type: 'login', preset: { password: value } });
           }}
-          className={cx('flex w-full items-center gap-3 rounded-2xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 cursor-pointer')}
+          className={cx('flex w-full items-center gap-3 rounded-xl border border-line bg-surface-2 p-4 text-left hover:border-accent/50 cursor-pointer')}
         >
           <span className="flex size-9 items-center justify-center rounded-xl bg-accent-soft text-accent">
             <Plus className="size-4" />

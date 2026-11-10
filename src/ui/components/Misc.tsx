@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '../cx';
 import { CollectionIcon, ITEM_TYPE_ICONS } from '../icons';
 import type { Collection, VaultItem } from '../../vault/types';
@@ -17,7 +17,7 @@ function hashString(s: string): number {
  */
 export function ItemAvatar({ item, category, size = 'md' }: { item: VaultItem; category?: Collection; size?: 'sm' | 'md' | 'lg' }) {
   const color = category?.color ?? MONO_COLORS[hashString(item.title || item.id) % MONO_COLORS.length];
-  const dims = size === 'sm' ? 'size-8 rounded-lg text-xs' : size === 'lg' ? 'size-14 rounded-2xl text-xl' : 'size-10 rounded-xl text-sm';
+  const dims = size === 'sm' ? 'size-9 rounded-[9px] text-sm' : size === 'lg' ? 'size-16 rounded-[16px] text-2xl' : 'size-10 rounded-[10px] text-sm';
   const TypeIcon = ITEM_TYPE_ICONS[item.type];
   const letter = (item.title.trim()[0] ?? '?').toUpperCase();
   return (
@@ -53,7 +53,7 @@ export function Badge({ children, tone = 'default', className }: { children: Rea
     success: 'bg-success-soft text-success',
     accent: 'bg-accent-soft text-accent',
   };
-  return <span className={cx('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide', tones[tone], className)}>{children}</span>;
+  return <span className={cx('inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium', tones[tone], className)}>{children}</span>;
 }
 
 /** Minimal accessible popover menu. */
@@ -89,7 +89,7 @@ export function Menu({ trigger, children, align = 'end', className }: { trigger:
       {open && (
         <div
           role="menu"
-          className={cx('animate-fade-in absolute z-40 mt-1 min-w-52 overflow-hidden rounded-xl border border-line bg-surface-2 p-1 shadow-strong', align === 'end' ? 'right-0' : 'left-0')}
+          className={cx('animate-menu glass-strong absolute z-40 mt-2 min-w-52 overflow-hidden rounded-[22px] p-1.5', align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left')}
         >
           {children(() => setOpen(false))}
         </div>
@@ -106,7 +106,7 @@ export function MenuItem({ icon, children, onSelect, tone, disabled }: { icon?: 
       disabled={disabled}
       onClick={onSelect}
       className={cx(
-        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm outline-none transition-colors cursor-pointer disabled:opacity-40',
+        'flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2 text-left text-sm outline-none transition-colors cursor-pointer disabled:opacity-40',
         tone === 'danger' ? 'text-danger hover:bg-danger-soft focus:bg-danger-soft' : 'text-fg hover:bg-surface-3 focus:bg-surface-3',
       )}
     >
@@ -118,30 +118,27 @@ export function MenuItem({ icon, children, onSelect, tone, disabled }: { icon?: 
 
 export function SectionCard({ title, description, children, actions, className }: { title?: ReactNode; description?: ReactNode; children: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <section className={cx('card p-5 sm:p-6', className)}>
+    <section className={className}>
       {(title || actions) && (
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="mb-1.5 flex flex-wrap items-end justify-between gap-3 px-4">
           <div className="min-w-0">
-            {title && <h2 className="text-base font-semibold text-fg">{title}</h2>}
-            {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+            {title && <h2 className="text-[13px] font-normal uppercase tracking-wide text-muted">{title}</h2>}
+            {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
           </div>
           {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </div>
       )}
-      {children}
+      <div className="card px-4 py-3 sm:px-5">{children}</div>
     </section>
   );
 }
 
-export function PageHeader({ title, subtitle, actions, icon }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-3">
-        {icon && <div className="hidden size-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent sm:flex">{icon}</div>}
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-fg">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
-        </div>
+      <div className="min-w-0">
+        <h1 className="truncate text-[30px] font-bold leading-tight tracking-tight text-fg md:text-[26px]">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -149,20 +146,12 @@ export function PageHeader({ title, subtitle, actions, icon }: { title: ReactNod
 }
 
 export function Logo({ className }: { className?: string }) {
-  const gradientId = `mv-logo-${useId().replace(/:/g, '')}`;
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden>
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--accent)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--accent-2)' }} />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="2" width="44" height="44" rx="13" fill={`url(#${gradientId})`} />
-      <path d="M24 11.5 14 15.6v7.6c0 6.6 4.2 11.6 10 13.3 5.8-1.7 10-6.7 10-13.3v-7.6Z" fill="rgb(0 0 0 / 0.18)" />
-      <path d="M24 13.5 15.8 17v6.3c0 5.5 3.4 9.6 8.2 11.1 4.8-1.5 8.2-5.6 8.2-11.1V17Z" fill="none" stroke="white" strokeWidth="2.2" strokeLinejoin="round" />
-      <circle cx="24" cy="22.6" r="2.6" fill="white" />
-      <path d="M24 24.6v4.4" stroke="white" strokeWidth="2.4" strokeLinecap="round" />
+    <svg viewBox="0 0 32 32" className={className} aria-hidden>
+      <rect width="32" height="32" rx="9" fill="var(--accent)" />
+      <rect width="32" height="16" rx="9" fill="#fff" opacity="0.18" />
+      <circle cx="16" cy="13.5" r="4.25" fill="var(--on-accent)" />
+      <path d="M14.1 16.2h3.8l1.1 7.3h-6Z" fill="var(--on-accent)" />
     </svg>
   );
 }

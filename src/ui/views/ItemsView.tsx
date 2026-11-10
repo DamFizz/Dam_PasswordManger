@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Archive,
   ArchiveRestore,
+  Check,
   CheckSquare,
+  Circle,
+  CircleCheck,
   FolderInput,
   KeyRound,
-  LayoutGrid,
-  List,
+  ListFilter,
   Pencil,
   RotateCcw,
   Search,
@@ -15,6 +17,7 @@ import {
   Star,
   Tag,
   Trash2,
+  TriangleAlert,
   UserRound,
   X,
 } from 'lucide-react';
@@ -24,6 +27,7 @@ import {
   app,
   archiveItems,
   emptyTrash,
+  HOME,
   markUsed,
   navigate,
   openEditor,
@@ -36,12 +40,13 @@ import {
   type Filter,
 } from '../../state/app';
 import { setPrefs, usePrefs } from '../../state/prefs-store';
+import { useSync } from '../../state/sync-controller';
 import type { Collection, VaultItem } from '../../vault/types';
 import { Button, IconButton } from '../components/Button';
 import { EmptyState } from '../components/Feedback';
 import { TextField } from '../components/Field';
 import { CollectionIcon, ITEM_TYPE_ICONS } from '../icons';
-import { ItemAvatar } from '../components/Misc';
+import { ItemAvatar, Menu } from '../components/Misc';
 import { Modal } from '../components/Modal';
 import { CopyButton } from '../components/Secret';
 import { cx } from '../cx';
@@ -52,35 +57,171 @@ import { MoveDialog } from '../items/MoveDialog';
 import { ensureItemAccess } from '../items/reprompt';
 import { DRAG_MIME } from '../shell/Sidebar';
 
-function useFilterTitle(filter: Filter, collections: Collection[]): { title: string; icon?: React.ReactNode } {
+function useFilterTitle(filter: Filter, collections: Collection[]): string {
   const t = useT();
   switch (filter.kind) {
     case 'all':
-      return { title: t('nav.all') };
+      return t('nav.all');
     case 'favorites':
-      return { title: t('nav.favorites') };
+      return t('nav.favorites');
     case 'recentAdded':
-      return { title: t('nav.recentAdded') };
+      return t('nav.recentAdded');
     case 'recentUsed':
-      return { title: t('nav.recentUsed') };
+      return t('nav.recentUsed');
     case 'type':
-      return { title: filter.type === 'login' ? t('nav.passwords') : filter.type === 'note' ? t('nav.notes') : t('nav.otherItems') };
+      return filter.type === 'login' ? t('nav.passwords') : filter.type === 'note' ? t('nav.notes') : t('nav.otherItems');
     case 'category':
-    case 'section': {
-      const c = collections.find((x) => x.id === filter.id);
-      return { title: c?.name ?? '—', icon: c ? <CollectionIcon name={c.icon} color={c.color} className="size-5" /> : undefined };
-    }
+    case 'section':
+      return collections.find((x) => x.id === filter.id)?.name ?? '—';
     case 'tag':
-      return { title: `#${filter.tag}` };
+      return `#${filter.tag}`;
     case 'uncategorized':
-      return { title: t('nav.uncategorized') };
+      return t('nav.uncategorized');
     case 'archive':
-      return { title: t('nav.archive') };
+      return t('nav.archive');
     case 'trash':
-      return { title: t('nav.trash') };
+      return t('nav.trash');
     case 'ids':
-      return { title: filter.label };
+      return filter.label;
   }
+}
+
+/** One menu for everything that used to crowd the sidebar: type, category, archive, trash and sort. */
+function FilterMenu({ filter }: { filter: Filter }) {
+  const t = useT();
+  const prefs = usePrefs();
+  const collections = useApp((s) => s.collections);
+  const categories = collections.filter((c) => c.kind === 'category').sort((a, b) => a.order - b.order);
+  const is = (f: Filter) => JSON.stringify(f) === JSON.stringify(filter);
+  const Row = ({ label, active, onSelect, icon }: { label: string; active: boolean; onSelect: () => void; icon?: ReactNode }) => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onSelect}
+      className="flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2 text-left text-sm text-fg outline-none hover:bg-surface-2 focus:bg-surface-2 cursor-pointer"
+    >
+      <span className="flex size-4 items-center justify-center text-muted [&>svg]:size-4">{icon}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {active && <Check className="size-4 text-accent" />}
+    </button>
+  );
+  const Heading = ({ children }: { children: ReactNode }) => <p className="px-2.5 pb-1 pt-2 text-xs font-medium text-faint">{children}</p>;
+  return (
+    <Menu
+      trigger={(p) => (
+        <Button size="sm" variant={filter.kind === 'all' || filter.kind === 'favorites' || filter.kind === 'section' ? 'secondary' : 'subtle'} icon={<ListFilter className="size-4" />} {...p}>
+          {t('filter.button')}
+        </Button>
+      )}
+      className="shrink-0"
+    >
+      {(close) => {
+        const go = (f: Filter) => {
+          close();
+          navigate({ name: 'items', filter: f });
+        };
+        return (
+          <div className="max-h-[80vh] w-60 overflow-y-auto">
+            <Heading>{t('filter.show')}</Heading>
+            <Row label={t('nav.all')} active={is({ kind: 'all' })} onSelect={() => go({ kind: 'all' })} />
+            <Row label={t('nav.passwords')} active={is({ kind: 'type', type: 'login' })} onSelect={() => go({ kind: 'type', type: 'login' })} />
+            <Row label={t('nav.notes')} active={is({ kind: 'type', type: 'note' })} onSelect={() => go({ kind: 'type', type: 'note' })} />
+            <Row label={t('nav.otherItems')} active={is({ kind: 'type', type: 'other' })} onSelect={() => go({ kind: 'type', type: 'other' })} />
+            <Heading>{t('sort.label')}</Heading>
+            {(['title', 'updated', 'created', 'used'] as const).map((s) => (
+              <Row
+                key={s}
+                label={t(`sort.${s}`)}
+                active={prefs.sortBy === s}
+                onSelect={() => {
+                  close();
+                  setPrefs({ sortBy: s });
+                }}
+              />
+            ))}
+            {categories.length > 0 && <Heading>{t('field.category')}</Heading>}
+            {categories.map((c) => (
+              <Row key={c.id} label={c.name} icon={<CollectionIcon name={c.icon} color={c.color} />} active={is({ kind: 'category', id: c.id })} onSelect={() => go({ kind: 'category', id: c.id })} />
+            ))}
+            <div className="my-1 border-t border-line" />
+            <Row label={t('nav.archive')} icon={<Archive />} active={is({ kind: 'archive' })} onSelect={() => go({ kind: 'archive' })} />
+            <Row label={t('nav.trash')} icon={<Trash2 />} active={is({ kind: 'trash' })} onSelect={() => go({ kind: 'trash' })} />
+          </div>
+        );
+      }}
+    </Menu>
+  );
+}
+
+/** Replaces the old dashboard: a short, dismissible list of the things worth doing once. */
+function SetupChecklist() {
+  const t = useT();
+  const prefs = usePrefs();
+  const items = useApp((s) => s.items);
+  const session = useApp((s) => s.session);
+  const lastBackupAt = useApp((s) => s.lastBackupAt);
+  const connected = useSync((s) => s.connected);
+  if (prefs.tourDone || !session) return null;
+  const steps = [
+    { done: items.some((i) => !i.trashedAt), label: t('setup.add'), run: () => openEditor({ mode: 'new', type: 'login' }) },
+    { done: !!session.security.recoveryKeyCreatedAt, label: t('setup.recoveryKey'), run: () => navigate({ name: 'settings' }) },
+    { done: !!session.security.totp, label: t('setup.totp'), run: () => navigate({ name: 'settings' }) },
+    { done: connected, label: t('setup.sync'), run: () => navigate({ name: 'sync' }) },
+    { done: !!lastBackupAt, label: t('setup.backup'), run: () => navigate({ name: 'backup' }) },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  if (doneCount === steps.length) return null;
+  return (
+    <section className="lg-group mx-3 mb-3 p-4" aria-label={t('setup.title')}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-fg">{t('setup.title')}</h2>
+          <p className="mt-0.5 text-xs text-muted">{t('setup.progress', { done: doneCount, total: steps.length })}</p>
+        </div>
+        <button type="button" onClick={() => setPrefs({ tourDone: true })} className="text-xs text-faint hover:text-fg cursor-pointer">
+          {t('setup.hide')}
+        </button>
+      </div>
+      <ul className="mt-3 space-y-0.5">
+        {steps.map((s) => (
+          <li key={s.label}>
+            <button
+              type="button"
+              disabled={s.done}
+              onClick={s.run}
+              className={cx('flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-sm', s.done ? 'text-faint line-through' : 'text-fg hover:bg-surface-2 cursor-pointer')}
+            >
+              {s.done ? <CircleCheck className="size-4 shrink-0 text-success" /> : <Circle className="size-4 shrink-0 text-faint" />}
+              {s.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Notices() {
+  const t = useT();
+  const corrupted = useApp((s) => s.corrupted);
+  const conflicts = useApp((s) => s.conflicts);
+  if (!corrupted && !conflicts.length) return null;
+  return (
+    <div className="mx-3 mb-3 space-y-2 sm:mx-5">
+      {corrupted > 0 && (
+        <p role="alert" className="flex gap-2 rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-fg">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+          {t('dashboard.corrupted', { n: corrupted })}
+        </p>
+      )}
+      {conflicts.length > 0 && (
+        <button type="button" onClick={() => navigate({ name: 'sync' })} className="flex w-full gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-left text-sm text-fg cursor-pointer">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
+          {t('dashboard.conflicts', { n: conflicts.length })}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function ItemsView({ filter }: { filter: Filter }) {
@@ -95,7 +236,7 @@ export function ItemsView({ filter }: { filter: Filter }) {
   const [selectMode, setSelectMode] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [tagOpen, setTagOpen] = useState(false);
-  const { title, icon } = useFilterTitle(filter, collections);
+  const title = useFilterTitle(filter, collections);
 
   const list = useMemo(() => visibleItems(items, filter, search, { collections, usage, sortBy: prefs.sortBy }), [items, filter, search, collections, usage, prefs.sortBy]);
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -103,6 +244,7 @@ export function ItemsView({ filter }: { filter: Filter }) {
   const inTrash = filter.kind === 'trash';
   const inArchive = filter.kind === 'archive';
   const selecting = selectMode || selection.length > 0;
+  const showsChip = !['all', 'favorites', 'section'].includes(filter.kind);
 
   useEffect(() => {
     if (selectedId && !items.some((i) => i.id === selectedId)) selectItem(null);
@@ -110,63 +252,55 @@ export function ItemsView({ filter }: { filter: Filter }) {
 
   const toggleSel = (id: string) => app.set((s) => ({ selection: s.selection.includes(id) ? s.selection.filter((x) => x !== id) : [...s.selection, id] }));
   const allSelected = list.length > 0 && list.every((i) => selection.includes(i.id));
-  const editableCollection = filter.kind === 'category' || filter.kind === 'section' ? collections.find((c) => c.id === filter.id) : undefined;
+  const folder = filter.kind === 'section' ? collections.find((c) => c.id === filter.id) : undefined;
 
   return (
-    <div className="flex h-full">
-      <section className={cx('flex min-w-0 flex-1 flex-col border-line lg:max-w-[460px] lg:border-r xl:max-w-[520px]', selected && 'max-lg:hidden')} aria-label={title}>
-        <div className="flex flex-wrap items-center gap-2 px-4 pb-3 pt-5 sm:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            {icon}
-            <h1 className="truncate text-xl font-semibold tracking-tight">{search ? t('search.results') : title}</h1>
+    <div className="flex h-full md:gap-3">
+      <section className={cx('flex min-w-0 flex-1 flex-col lg-panel lg:max-w-[420px] xl:max-w-[460px]', selected && 'max-lg:hidden')} aria-label={title}>
+        <div className="flex items-center gap-2 px-4 pb-2 pt-4 sm:px-5">
+          <div className="flex min-w-0 flex-1 items-baseline gap-2">
+            <h1 className="truncate text-[30px] font-bold leading-tight tracking-tight md:text-[22px]">{search ? t('search.results') : title}</h1>
             <span className="text-sm tabular-nums text-faint">{list.length}</span>
-            {editableCollection && (
-              <IconButton label={t('organize.edit')} size="sm" onClick={() => navigate({ name: 'organize' })}>
+            {folder && (
+              <IconButton label={t('organize.edit')} size="sm" onClick={() => navigate({ name: 'organize' })} className="self-center">
                 <Pencil className="size-3.5" />
               </IconButton>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <select
-              aria-label={t('sort.label')}
-              value={prefs.sortBy}
-              onChange={(e) => setPrefs({ sortBy: e.target.value as typeof prefs.sortBy })}
-              className="h-8 cursor-pointer rounded-lg border border-line bg-surface-2 px-2 text-xs text-muted hover:text-fg"
-            >
-              <option value="title">{t('sort.title')}</option>
-              <option value="updated">{t('sort.updated')}</option>
-              <option value="created">{t('sort.created')}</option>
-              <option value="used">{t('sort.used')}</option>
-            </select>
-            <IconButton label={prefs.viewMode === 'list' ? t('view.grid') : t('view.list')} size="sm" onClick={() => setPrefs({ viewMode: prefs.viewMode === 'list' ? 'grid' : 'list' })}>
-              {prefs.viewMode === 'list' ? <LayoutGrid className="size-4" /> : <List className="size-4" />}
-            </IconButton>
-            <IconButton
-              label={t('select.toggle')}
-              size="sm"
-              active={selecting}
-              onClick={() => {
-                if (selecting) {
-                  setSelectMode(false);
-                  app.set({ selection: [] });
-                } else setSelectMode(true);
-              }}
-            >
-              <CheckSquare className="size-4" />
-            </IconButton>
-          </div>
-          {inTrash && list.length > 0 && (
-            <div className="flex w-full items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs text-muted">
-              <span>{t('trash.info', { days: app.get().settings.trashRetentionDays })}</span>
-              <Button size="sm" variant="danger" onClick={() => void emptyTrash()}>
-                {t('trash.empty')}
-              </Button>
-            </div>
-          )}
+          <FilterMenu filter={filter} />
+          <IconButton
+            label={t('select.toggle')}
+            size="sm"
+            active={selecting}
+            onClick={() => {
+              if (selecting) {
+                setSelectMode(false);
+                app.set({ selection: [] });
+              } else setSelectMode(true);
+            }}
+          >
+            <CheckSquare className="size-4" />
+          </IconButton>
         </div>
 
+        {showsChip && !search && (
+          <div className="flex items-center gap-2 px-4 pb-2 sm:px-5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-3 pr-1.5 text-[13px] text-fg">
+              {title}
+              <button type="button" aria-label={t('filter.clear')} onClick={() => navigate(HOME)} className="flex size-5 items-center justify-center rounded-full text-muted hover:bg-surface-3 hover:text-fg cursor-pointer">
+                <X className="size-3.5" />
+              </button>
+            </span>
+            {inTrash && list.length > 0 && (
+              <Button size="sm" variant="danger" className="ml-auto" onClick={() => void emptyTrash()}>
+                {t('trash.empty')}
+              </Button>
+            )}
+          </div>
+        )}
+
         {selecting && (
-          <div className="mx-4 mb-2 flex flex-wrap items-center gap-1 rounded-2xl border border-line bg-surface-2 p-1.5 sm:mx-6">
+          <div className="mx-3 mb-2 flex flex-wrap items-center gap-1 rounded-lg border border-line bg-surface p-1 sm:mx-5">
             <Button size="sm" variant="ghost" icon={allSelected ? <SquareCheck className="size-4" /> : <Square className="size-4" />} onClick={() => app.set({ selection: allSelected ? [] : list.map((i) => i.id) })}>
               {t('select.count', { n: selection.length })}
             </Button>
@@ -213,17 +347,17 @@ export function ItemsView({ filter }: { filter: Filter }) {
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-28 sm:px-4 md:pb-8">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-28 md:pb-6">
+          {filter.kind === 'all' && !search && (
+            <>
+              <Notices />
+              <SetupChecklist />
+            </>
+          )}
           {list.length === 0 ? (
             <ListEmpty filter={filter} search={search} />
-          ) : prefs.viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 gap-2 p-2 min-[420px]:grid-cols-2">
-              {list.map((item) => (
-                <ItemCard key={item.id} item={item} category={item.categoryId ? categoryById.get(item.categoryId) : undefined} selected={item.id === selectedId} checked={selection.includes(item.id)} selecting={selecting} onToggle={() => toggleSel(item.id)} />
-              ))}
-            </div>
           ) : (
-            <ul className="space-y-0.5 py-1" role="list">
+            <ul className="lg-list max-md:mx-3 max-md:p-1.5 md:px-2" role="list">
               {list.map((item) => (
                 <ItemRow key={item.id} item={item} category={item.categoryId ? categoryById.get(item.categoryId) : undefined} selected={item.id === selectedId} checked={selection.includes(item.id)} selecting={selecting} onToggle={() => toggleSel(item.id)} />
               ))}
@@ -232,14 +366,12 @@ export function ItemsView({ filter }: { filter: Filter }) {
         </div>
       </section>
 
-      <section className={cx('min-w-0 flex-1 bg-surface/30', selected ? 'flex flex-col max-lg:absolute max-lg:inset-0 max-lg:z-20 max-lg:bg-bg' : 'hidden lg:flex lg:flex-col')} aria-label={t('item.details')}>
+      <section className={cx('min-w-0 flex-1 lg-panel', selected ? 'flex flex-col max-lg:absolute max-lg:inset-0 max-lg:z-20' : 'hidden lg:flex lg:flex-col')} aria-label={t('item.details')}>
         {selected ? (
           <ItemDetail key={selected.id} item={selected} onBack={() => selectItem(null)} />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <EmptyState icon={<KeyRound className="size-7" />} title={t('item.selectTitle')}>
-              {t('item.selectBody')}
-            </EmptyState>
+            <p className="text-sm text-faint">{t('item.selectTitle')}</p>
           </div>
         )}
       </section>
@@ -275,25 +407,15 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
       <div
         draggable={!item.trashedAt}
         onDragStart={(e) => dragStart(e, item)}
-        className={cx(
-          'group relative flex items-center gap-3 rounded-2xl px-2.5 py-2 transition-colors',
-          selected ? 'bg-accent-soft' : checked ? 'bg-surface-2' : 'hover:bg-surface-2',
-        )}
+        className={cx('group relative flex items-center gap-3 rounded-[14px] px-2.5 py-2 transition-colors duration-200', selected ? 'bg-accent text-on-accent [&_.text-muted]:text-on-accent/75 [&_.text-fg]:text-on-accent [&_button]:text-on-accent' : checked ? 'bg-surface-2' : 'hover:bg-surface-2 active:bg-surface-3')}
       >
-        {selecting && (
-          <input type="checkbox" checked={checked} onChange={onToggle} aria-label={t('select.item', { title: item.title })} className="size-[18px] shrink-0 cursor-pointer accent-[var(--accent)]" />
-        )}
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
-          onClick={() => (selecting ? onToggle() : selectItem(item.id))}
-          aria-current={selected ? 'true' : undefined}
-        >
-          <ItemAvatar item={item} category={category} />
+        {selecting && <input type="checkbox" checked={checked} onChange={onToggle} aria-label={t('select.item', { title: item.title })} className="size-4 shrink-0 cursor-pointer accent-[var(--accent)]" />}
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer" onClick={() => (selecting ? onToggle() : selectItem(item.id))} aria-current={selected ? 'true' : undefined}>
+          <ItemAvatar item={item} category={category} size="sm" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-[15px] font-medium text-fg">{item.title}</p>
-              {item.favorite && <Star className="size-3.5 shrink-0 fill-warning text-warning" aria-label={t('nav.favorites')} />}
+              <p className="truncate text-[14px] font-medium text-fg">{item.title}</p>
+              {item.favorite && <Star className="size-3 shrink-0 fill-warning text-warning" aria-label={t('nav.favorites')} />}
             </div>
             <p className="flex items-center gap-1 truncate text-[13px] text-muted">
               {item.type !== 'login' && <TypeIcon className="size-3 shrink-0" aria-hidden />}
@@ -302,7 +424,7 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
           </div>
         </button>
         {!selecting && !item.trashedAt && (
-          <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <div className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             {item.type === 'login' && (item.username || item.email) && (
               <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} icon={<UserRound className="size-4" />} />
             )}
@@ -323,71 +445,35 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
   );
 }
 
-function ItemCard({ item, category, selected, checked, selecting, onToggle }: RowProps) {
-  const t = useT();
-  return (
-    <div
-      draggable={!item.trashedAt}
-      onDragStart={(e) => dragStart(e, item)}
-      className={cx('group relative rounded-2xl border p-3.5 transition-colors', selected ? 'border-accent bg-accent-soft' : checked ? 'border-line-strong bg-surface-2' : 'border-line bg-surface hover:border-line-strong')}
-    >
-      <button type="button" onClick={() => (selecting ? onToggle() : selectItem(item.id))} className="flex w-full items-start gap-3 text-left cursor-pointer">
-        <ItemAvatar item={item} category={category} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-fg">{item.title}</p>
-          <p className="truncate text-[13px] text-muted">{itemSubtitle(item, t(TYPE_LABEL_KEYS[item.type]))}</p>
-        </div>
-        {selecting ? (
-          <input type="checkbox" checked={checked} onChange={onToggle} onClick={(e) => e.stopPropagation()} aria-label={t('select.item', { title: item.title })} className="size-[18px] cursor-pointer accent-[var(--accent)]" />
-        ) : (
-          item.favorite && <Star className="size-4 fill-warning text-warning" />
-        )}
-      </button>
-      {!selecting && !item.trashedAt && (item.password || item.username || item.email) && (
-        <div className="mt-3 flex items-center gap-1 border-t border-line pt-2">
-          {(item.username || item.email) && <CopyButton value={(item.username || item.email)!} secret={false} label={item.username ? t('field.username') : t('field.email')} onCopied={() => void markUsed(item.id)} icon={<UserRound className="size-4" />} />}
-          {item.password && <CopyButton value={item.password} secret label={t('field.password')} beforeCopy={() => ensureItemAccess(item)} onCopied={() => void markUsed(item.id)} icon={<KeyRound className="size-4" />} />}
-          {category && (
-            <span className="ml-auto inline-flex min-w-0 items-center gap-1 truncate text-xs text-faint">
-              <CollectionIcon name={category.icon} color={category.color} className="size-3.5" />
-              <span className="truncate">{category.name}</span>
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ListEmpty({ filter, search }: { filter: Filter; search: string }) {
   const t = useT();
   if (search)
     return (
-      <EmptyState icon={<Search className="size-7" />} title={t('empty.search.title')}>
+      <EmptyState icon={<Search />} title={t('empty.search.title')}>
         {t('empty.search.body', { q: search })}
       </EmptyState>
     );
   if (filter.kind === 'trash')
     return (
-      <EmptyState icon={<Trash2 className="size-7" />} title={t('empty.trash.title')}>
+      <EmptyState icon={<Trash2 />} title={t('empty.trash.title')}>
         {t('empty.trash.body')}
       </EmptyState>
     );
   if (filter.kind === 'archive')
     return (
-      <EmptyState icon={<Archive className="size-7" />} title={t('empty.archive.title')}>
+      <EmptyState icon={<Archive />} title={t('empty.archive.title')}>
         {t('empty.archive.body')}
       </EmptyState>
     );
   if (filter.kind === 'favorites')
     return (
-      <EmptyState icon={<Star className="size-7" />} title={t('empty.favorites.title')}>
+      <EmptyState icon={<Star />} title={t('empty.favorites.title')}>
         {t('empty.favorites.body')}
       </EmptyState>
     );
   return (
     <EmptyState
-      icon={<KeyRound className="size-7" />}
+      icon={<KeyRound />}
       title={t('empty.items.title')}
       action={
         <Button variant="primary" onClick={() => openEditor({ mode: 'new', type: filter.kind === 'type' && filter.type === 'note' ? 'note' : 'login' })}>

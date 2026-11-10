@@ -2,12 +2,12 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type Selec
 import { cx } from '../cx';
 
 export const inputClass =
-  'w-full min-w-0 bg-surface-2 border border-line rounded-xl px-3.5 h-11 text-[15px] text-fg placeholder:text-faint transition-[border-color,box-shadow] duration-150 hover:border-line-strong focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-60';
+  'w-full min-w-0 bg-[var(--field)] border border-[var(--border)] rounded-[16px] px-4 h-12 text-[16px] text-fg placeholder:text-faint shadow-[inset_0_1px_2px_rgb(0_0_0/0.12)] transition-[border-color,box-shadow] duration-200 focus:border-accent focus:shadow-[0_0_0_4px_var(--accent-soft)] disabled:opacity-60';
 
 export function Label({ htmlFor, children, hint }: { htmlFor?: string; children: ReactNode; hint?: ReactNode }) {
   return (
     <div className="mb-1.5 flex items-baseline justify-between gap-2">
-      <label htmlFor={htmlFor} className="text-[13px] font-medium text-muted">
+      <label htmlFor={htmlFor} className="text-[13px] text-muted">
         {children}
       </label>
       {hint && <span className="text-xs text-faint">{hint}</span>}
@@ -101,7 +101,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
         ref={ref}
         id={fid}
         rows={rows}
-        className={cx(inputClass, 'h-auto py-2.5 leading-relaxed resize-y min-h-[5rem]', className)}
+        className={cx(inputClass, 'h-auto rounded-[18px] py-3 leading-relaxed resize-y min-h-[5rem]', className)}
         {...rest}
       />
     </FieldWrap>
@@ -164,14 +164,14 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cx(
-          'relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 cursor-pointer',
-          checked ? 'bg-accent border-transparent' : 'bg-surface-3 border-line-strong',
+          'relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-300 cursor-pointer',
+          checked ? 'bg-success' : 'bg-[var(--switch-off)]',
         )}
       >
         <span
           className={cx(
-            'absolute left-0 top-px size-5 rounded-full bg-white shadow transition-transform duration-200',
-            checked ? 'translate-x-5' : 'translate-x-0.5',
+            'absolute left-[2px] top-[2px] size-[27px] rounded-full bg-white shadow-[0_3px_8px_rgb(0_0_0/0.15),0_1px_1px_rgb(0_0_0/0.16)] transition-transform duration-300 ease-[var(--ease-spring)]',
+            checked ? 'translate-x-5' : 'translate-x-0',
           )}
         />
       </button>
@@ -193,7 +193,7 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md';
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl bg-surface-2 border border-line p-1 gap-1">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-[var(--seg-track)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.15)]">
       {options.map((o) => (
         <button
           key={o.value}
@@ -202,9 +202,9 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            'inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer',
-            size === 'sm' ? 'px-2.5 h-7 text-xs' : 'px-3 h-8 text-sm',
-            value === o.value ? 'bg-surface text-fg shadow-soft' : 'text-muted hover:text-fg',
+            'inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-[background-color,box-shadow,color] duration-300 cursor-pointer',
+            size === 'sm' ? 'px-3.5 h-8 text-[13px]' : 'px-4 h-9 text-sm',
+            value === o.value ? 'bg-[var(--seg-thumb)] text-fg shadow-[inset_0_1px_0_var(--glass-sheen),0_3px_10px_rgb(0_0_0/0.18)]' : 'text-fg/75 hover:text-fg',
           )}
         >
           {o.icon}

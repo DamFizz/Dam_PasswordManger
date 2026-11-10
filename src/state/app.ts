@@ -36,7 +36,6 @@ export type Filter =
   | { kind: 'ids'; ids: string[]; label: string };
 
 export type Route =
-  | { name: 'dashboard' }
   | { name: 'items'; filter: Filter }
   | { name: 'generator' }
   | { name: 'security' }
@@ -44,6 +43,9 @@ export type Route =
   | { name: 'settings' }
   | { name: 'backup' }
   | { name: 'organize'; create?: 'section' | 'category' };
+
+/** The vault list is the home screen. */
+export const HOME: Route = { name: 'items', filter: { kind: 'all' } };
 
 export interface EditorState {
   mode: 'new' | 'edit';
@@ -87,7 +89,7 @@ const EMPTY: Pick<AppState, 'session' | 'items' | 'collections' | 'settings' | '
 
 export const app = createStore<AppState>({
   phase: 'loading',
-  route: { name: 'dashboard' },
+  route: HOME,
   lockReason: null,
   ...EMPTY,
 });
@@ -167,7 +169,7 @@ export async function attachSession(session: VaultSession): Promise<void> {
     }
   });
   await refreshFromSession(session);
-  app.set({ session, phase: 'unlocked', lockReason: null, route: { name: 'dashboard' } });
+  app.set({ session, phase: 'unlocked', lockReason: null, route: HOME });
 
   stopAutoLock?.();
   stopAutoLock = startAutoLock(getPrefs, (reason) => lock(reason));
@@ -200,7 +202,7 @@ export function lock(reason: 'manual' | 'idle' | 'hidden' | 'other-tab' | 'resto
   dataChannel = null;
   session.lock();
   if (reason !== 'other-tab') broadcastLock();
-  app.set({ ...EMPTY, phase: 'locked', lockReason: reason, route: { name: 'dashboard' } });
+  app.set({ ...EMPTY, phase: 'locked', lockReason: reason, route: HOME });
 }
 
 export async function createNewVault(password: string): Promise<VaultSession> {

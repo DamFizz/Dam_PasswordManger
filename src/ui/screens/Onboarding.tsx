@@ -3,16 +3,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Cloud,
-  CloudDownload,
   FileUp,
   HardDrive,
-  KeyRound,
   Languages,
-  LifeBuoy,
-  LockKeyhole,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
 } from 'lucide-react';
 import { useT } from '../../i18n';
 import { isAcceptableMasterPassword } from '../../lib/strength';
@@ -28,23 +21,16 @@ import { Button } from '../components/Button';
 import { Checkbox } from '../components/Field';
 import { Logo } from '../components/Misc';
 import { PasswordInput } from '../components/Secret';
-import { cx } from '../cx';
 import { readFileAsText } from '../download';
 import { RecoveryKeyDisplay } from './RecoveryKit';
-import { TotpEnroll } from './TotpEnroll';
 import { GoogleSetupHelp } from './SyncView';
 
 type Step =
   | 'welcome'
-  | 'how'
   | 'password'
   | 'creating'
-  | 'totp'
-  | 'totp-setup'
   | 'recovery'
   | 'recovery-show'
-  | 'sync'
-  | 'done'
   | 'restore'
   | 'restore-drive'
   | 'restore-file';
@@ -53,19 +39,14 @@ function Shell({ children, onBack, step, total }: { children: ReactNode; onBack?
   const t = useT();
   const prefs = usePrefs();
   return (
-    <div className="ambient flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col">
       <header className="safe-top flex items-center justify-between px-4 py-4 sm:px-8">
         <div className="flex items-center gap-2">
           {onBack ? (
             <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-4" />} onClick={onBack}>
               {t('action.back')}
             </Button>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <Logo className="size-8" />
-              <span className="text-[17px] font-semibold tracking-tight">MyVault</span>
-            </div>
-          )}
+          ) : null}
         </div>
         <button
           type="button"
@@ -77,28 +58,12 @@ function Shell({ children, onBack, step, total }: { children: ReactNode; onBack?
           {prefs.lang === 'en' ? 'Bahasa Melayu' : 'English'}
         </button>
       </header>
-      {step !== undefined && total !== undefined && (
-        <div className="mx-auto mb-2 flex w-full max-w-md gap-1.5 px-6" aria-label={t('onboarding.progress', { n: step, total })}>
-          {Array.from({ length: total }, (_, i) => (
-            <div key={i} className={cx('h-1 flex-1 rounded-full transition-colors duration-300', i < step ? 'bg-accent' : 'bg-surface-3')} />
-          ))}
+      <main className="flex flex-1 items-start justify-center px-5 pb-10 pt-6 sm:items-center sm:px-6">
+        <div className="glass animate-fade-in w-full max-w-sm rounded-[32px] p-7 sm:p-8">
+          {step !== undefined && total !== undefined && <p className="mb-2 text-xs font-medium text-faint">{t('onboarding.progress', { n: step, total })}</p>}
+          {children}
         </div>
-      )}
-      <main className="flex flex-1 items-start justify-center px-4 pb-10 pt-4 sm:items-center sm:px-6">
-        <div className="animate-fade-in w-full max-w-md">{children}</div>
       </main>
-    </div>
-  );
-}
-
-function Feature({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-4 rounded-2xl border border-line bg-surface/70 p-4 backdrop-blur">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">{icon}</div>
-      <div>
-        <h3 className="font-semibold text-fg">{title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-muted">{children}</p>
-      </div>
     </div>
   );
 }
@@ -135,7 +100,7 @@ export function Onboarding() {
       setPassword('');
       setConfirm('');
       setSession(s);
-      setStep('totp');
+      setStep('recovery');
     } catch (e) {
       setStep('password');
       toastError(e);
@@ -146,47 +111,18 @@ export function Onboarding() {
     return (
       <Shell>
         <div className="text-center">
-          <div className="relative mx-auto mb-8 w-fit">
-            <div className="absolute inset-0 scale-150 rounded-full bg-accent-gradient opacity-30 blur-3xl" aria-hidden />
-            <Logo className="animate-float relative size-24 drop-shadow-2xl" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-fg sm:text-5xl">
-            <span className="text-accent-gradient">MyVault</span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-sm text-lg leading-relaxed text-muted">{t('onboarding.tagline')}</p>
-          <div className="mt-10 space-y-3">
-            <Button variant="primary" size="lg" block icon={<Sparkles className="size-5" />} onClick={() => setStep('how')}>
+          <Logo className="mx-auto mb-6 size-14" />
+          <h1 className="text-[34px] font-bold tracking-tight text-fg">MyVault</h1>
+          <p className="mx-auto mt-3 max-w-xs text-[15px] leading-relaxed text-muted">{t('onboarding.tagline')}</p>
+          <div className="mt-10 space-y-2.5">
+            <Button variant="primary" size="lg" block onClick={() => setStep('password')}>
               {t('onboarding.create')}
             </Button>
-            <Button size="lg" block icon={<CloudDownload className="size-5" />} onClick={() => setStep('restore')}>
+            <Button size="lg" block onClick={() => setStep('restore')}>
               {t('onboarding.haveVault')}
             </Button>
           </div>
-          <p className="mt-8 text-xs text-faint">{t('onboarding.privacyNote')}</p>
         </div>
-      </Shell>
-    );
-  }
-
-  if (step === 'how') {
-    return (
-      <Shell onBack={() => setStep('welcome')} step={1} total={5}>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.how.title')}</h1>
-        <p className="mt-2 text-muted">{t('onboarding.how.subtitle')}</p>
-        <div className="mt-6 space-y-3">
-          <Feature icon={<LockKeyhole className="size-5" />} title={t('onboarding.how.local.title')}>
-            {t('onboarding.how.local.body')}
-          </Feature>
-          <Feature icon={<KeyRound className="size-5" />} title={t('onboarding.how.key.title')}>
-            {t('onboarding.how.key.body')}
-          </Feature>
-          <Feature icon={<Cloud className="size-5" />} title={t('onboarding.how.sync.title')}>
-            {t('onboarding.how.sync.body')}
-          </Feature>
-        </div>
-        <Button variant="primary" size="lg" block className="mt-8" icon={<ArrowRight className="size-5" />} onClick={() => setStep('password')}>
-          {t('action.continue')}
-        </Button>
       </Shell>
     );
   }
@@ -195,9 +131,9 @@ export function Onboarding() {
     const mismatch = confirm.length > 0 && confirm !== password;
     const weak = password.length > 0 && !isAcceptableMasterPassword(password);
     return (
-      <Shell onBack={step === 'creating' ? undefined : () => setStep('how')} step={2} total={5}>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.pw.title')}</h1>
-        <p className="mt-2 text-muted">{t('onboarding.pw.subtitle')}</p>
+      <Shell onBack={step === 'creating' ? undefined : () => setStep('welcome')} step={1} total={2}>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">{t('onboarding.pw.title')}</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted">{t('onboarding.pw.subtitle')}</p>
         <form
           className="mt-6 space-y-4"
           onSubmit={(e) => {
@@ -224,15 +160,8 @@ export function Onboarding() {
             disabled={step === 'creating'}
             error={mismatch ? t('onboarding.pw.mismatch') : undefined}
           />
-          <div className="rounded-2xl border border-line bg-surface-2/70 p-4 text-sm text-muted">
-            <p className="font-medium text-fg">{t('onboarding.pw.tipsTitle')}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>{t('onboarding.pw.tip1')}</li>
-              <li>{t('onboarding.pw.tip2')}</li>
-              <li>{t('onboarding.pw.tip3')}</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-warning/30 bg-warning-soft p-4">
+          <p className="text-[13px] leading-relaxed text-muted">{t('onboarding.pw.tip1')}</p>
+          <div className="pt-1">
             <Checkbox checked={ack} onChange={setAck} label={t('onboarding.pw.ack')} />
           </div>
           <Button
@@ -251,46 +180,14 @@ export function Onboarding() {
     );
   }
 
-  if ((step === 'totp' || step === 'totp-setup') && session) {
-    return (
-      <Shell step={3} total={5}>
-        <div className="mb-6 flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-          <Smartphone className="size-6" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.totp.title')}</h1>
-        {step === 'totp' ? (
-          <>
-            <p className="mt-2 leading-relaxed text-muted">{t('onboarding.totp.body')}</p>
-            <div className="mt-4 rounded-2xl border border-line bg-surface-2/70 p-4 text-sm leading-relaxed text-muted">{t('onboarding.totp.limits')}</div>
-            <div className="mt-8 space-y-3">
-              <Button variant="primary" size="lg" block onClick={() => setStep('totp-setup')}>
-                {t('onboarding.totp.setup')}
-              </Button>
-              <Button size="lg" block variant="ghost" onClick={() => setStep('recovery')}>
-                {t('onboarding.skip')}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="mt-6 card p-5">
-            <TotpEnroll session={session} onDone={() => setStep('recovery')} onCancel={() => setStep('totp')} />
-          </div>
-        )}
-      </Shell>
-    );
-  }
-
   if ((step === 'recovery' || step === 'recovery-show') && session) {
     return (
-      <Shell step={4} total={5}>
-        <div className="mb-6 flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-          <LifeBuoy className="size-6" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.recovery.title')}</h1>
+      <Shell step={2} total={2}>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">{t('onboarding.recovery.title')}</h1>
         {step === 'recovery' || !recoveryKey ? (
           <>
-            <p className="mt-2 leading-relaxed text-muted">{t('onboarding.recovery.body')}</p>
-            <div className="mt-8 space-y-3">
+            <p className="mt-2 text-[15px] leading-relaxed text-muted">{t('onboarding.recovery.body')}</p>
+            <div className="mt-8 space-y-2.5">
               <Button
                 variant="primary"
                 size="lg"
@@ -315,10 +212,7 @@ export function Onboarding() {
                 size="lg"
                 block
                 variant="ghost"
-                onClick={() => {
-                  pwRef.current = '';
-                  setStep('sync');
-                }}
+                onClick={() => void finish()}
               >
                 {t('onboarding.skip')}
               </Button>
@@ -330,7 +224,7 @@ export function Onboarding() {
               recoveryKey={recoveryKey}
               onDone={() => {
                 setRecoveryKey(null);
-                setStep('sync');
+                void finish();
               }}
             />
           </div>
@@ -339,65 +233,10 @@ export function Onboarding() {
     );
   }
 
-  if (step === 'sync' && session) {
-    return (
-      <Shell step={5} total={5}>
-        <div className="mb-6 flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-          <Cloud className="size-6" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.sync.title')}</h1>
-        <p className="mt-2 leading-relaxed text-muted">{t('onboarding.sync.body')}</p>
-        {!hasClientId && (
-          <div className="mt-4">
-            <GoogleSetupHelp compact />
-          </div>
-        )}
-        <div className="mt-8 space-y-3">
-          <Button
-            variant="primary"
-            size="lg"
-            block
-            disabled={!hasClientId}
-            loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              // The token is held in memory and encrypted into the vault when the dashboard opens.
-              const ok = await connectGoogle();
-              setBusy(false);
-              if (ok) setStep('done');
-            }}
-          >
-            {t('onboarding.sync.connect')}
-          </Button>
-          <Button size="lg" block variant="ghost" onClick={() => setStep('done')}>
-            {t('onboarding.sync.later')}
-          </Button>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (step === 'done') {
-    return (
-      <Shell>
-        <div className="text-center">
-          <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-3xl bg-success-soft text-success">
-            <ShieldCheck className="size-10" />
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight">{t('onboarding.done.title')}</h1>
-          <p className="mx-auto mt-3 max-w-sm text-muted">{t('onboarding.done.body')}</p>
-          <Button variant="primary" size="lg" block className="mt-10" onClick={() => void finish()}>
-            {t('onboarding.done.open')}
-          </Button>
-        </div>
-      </Shell>
-    );
-  }
-
   if (step === 'restore') {
     return (
       <Shell onBack={() => setStep('welcome')}>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.restore.title')}</h1>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">{t('onboarding.restore.title')}</h1>
         <p className="mt-2 text-muted">{t('onboarding.restore.subtitle')}</p>
         <div className="mt-6 space-y-3">
           <ChoiceCard icon={<Cloud className="size-5" />} title={t('onboarding.restore.drive')} body={t('onboarding.restore.driveBody')} onClick={() => setStep('restore-drive')} />
@@ -414,7 +253,7 @@ export function Onboarding() {
   if (step === 'restore-drive') {
     return (
       <Shell onBack={() => setStep('restore')}>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.restore.drive')}</h1>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">{t('onboarding.restore.drive')}</h1>
         <p className="mt-2 leading-relaxed text-muted">{t('onboarding.restore.driveSteps')}</p>
         {!hasClientId && (
           <div className="mt-4">
@@ -469,7 +308,7 @@ function ChoiceCard({ icon, title, body, onClick }: { icon: ReactNode; title: st
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-start gap-4 rounded-2xl border border-line bg-surface/80 p-4 text-left transition-colors hover:border-accent/50 hover:bg-surface-2 cursor-pointer"
+      className="group flex w-full items-start gap-4 rounded-xl border border-line bg-surface/80 p-4 text-left transition-colors hover:border-accent/50 hover:bg-surface-2 cursor-pointer"
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">{icon}</div>
       <div className="min-w-0 flex-1">
@@ -492,9 +331,9 @@ export function RestoreFromFile({ onRestored }: { onRestored: () => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.restore.file')}</h1>
+      <h1 className="text-[28px] font-bold leading-tight tracking-tight">{t('onboarding.restore.file')}</h1>
       <p className="mt-2 text-muted">{t('backup.restoreHelp')}</p>
-      <label className="mt-6 flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-surface/60 p-6 text-center hover:border-accent/60">
+      <label className="mt-6 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line-strong bg-surface/60 p-6 text-center hover:border-accent/60">
         <FileUp className="size-6 text-accent" />
         <span className="text-sm font-medium text-fg">{fileName || t('backup.chooseFile')}</span>
         <span className="text-xs text-faint">.myvault</span>

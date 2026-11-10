@@ -30,7 +30,7 @@ export function TotpEnroll({ session, onDone, onCancel }: { session: VaultSessio
   useEffect(() => {
     let alive = true;
     import('qrcode')
-      .then(({ default: QRCode }) => QRCode.toDataURL(otpauthUri(secret, `Vault (${label})`), { errorCorrectionLevel: 'M', margin: 1, width: 232, color: { dark: '#0b0d12', light: '#ffffff' } }))
+      .then(({ default: QRCode }) => QRCode.toDataURL(otpauthUri(secret, `Vault (${label})`), { errorCorrectionLevel: 'M', margin: 1, width: 232, color: { dark: '#111113', light: '#ffffff' } }))
       .then((url) => alive && setQr(url))
       .catch(() => alive && setQr(null));
     return () => {
@@ -56,7 +56,7 @@ export function TotpEnroll({ session, onDone, onCancel }: { session: VaultSessio
     const text = `${t('recoveryCodes.fileHeader')}\n${new Date().toLocaleString()}\n\n${codes.join('\n')}\n`;
     return (
       <div className="animate-fade-in space-y-5">
-        <div className="flex items-center gap-3 rounded-2xl bg-success-soft p-4 text-success">
+        <div className="flex items-center gap-3 rounded-xl bg-success-soft p-4 text-success">
           <Check className="size-5 shrink-0" />
           <p className="text-sm font-medium">{t('totp.enabled')}</p>
         </div>
@@ -64,7 +64,7 @@ export function TotpEnroll({ session, onDone, onCancel }: { session: VaultSessio
           <h3 className="text-base font-semibold text-fg">{t('recoveryCodes.title')}</h3>
           <p className="mt-1 text-sm text-muted">{t('recoveryCodes.explain')}</p>
         </div>
-        <ol className="grid grid-cols-2 gap-2 rounded-2xl border border-line bg-surface-2 p-4 secret text-[15px]" aria-label={t('recoveryCodes.title')}>
+        <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface-2 p-4 secret text-[15px]" aria-label={t('recoveryCodes.title')}>
           {codes.map((c) => (
             <li key={c} className="rounded-lg bg-surface px-3 py-2 text-center text-fg">
               {c}
@@ -105,7 +105,7 @@ export function TotpEnroll({ session, onDone, onCancel }: { session: VaultSessio
         </li>
       </ol>
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
-        <div className="flex size-[232px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-2">
+        <div className="flex size-[232px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2">
           {qr ? <img src={qr} alt={t('totp.qrAlt')} className="size-full" /> : <Smartphone className="size-10 text-faint" />}
         </div>
         <div className="w-full min-w-0 space-y-2">

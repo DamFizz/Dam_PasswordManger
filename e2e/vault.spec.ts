@@ -6,22 +6,18 @@ const MASTER = 'E2e-Test-Vault-Passphrase-77';
 async function createVault(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: /create a new vault/i }).click();
-  await page.getByRole('button', { name: /continue/i }).click();
   await page.getByLabel('Master password', { exact: true }).fill(MASTER);
   await page.getByLabel('Confirm password', { exact: true }).fill(MASTER);
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: /create vault/i }).click();
   await page.getByRole('button', { name: /skip for now/i }).click({ timeout: 30_000 });
-  await page.getByRole('button', { name: /skip for now/i }).click();
-  await page.getByRole('button', { name: /maybe later/i }).click();
-  await page.getByRole('button', { name: /open my vault/i }).click();
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'All items' }).first()).toBeVisible();
 }
 
 async function unlock(page: Page) {
   await page.getByLabel('Master password', { exact: true }).fill(MASTER);
   await page.getByRole('button', { name: /^unlock$/i }).click();
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'All items' }).first()).toBeVisible({ timeout: 30_000 });
 }
 
 test('create, add, lock, reload, unlock, work offline — with no CSP violations', async ({ page, context }) => {
@@ -33,7 +29,7 @@ test('create, add, lock, reload, unlock, work offline — with no CSP violations
 
   await createVault(page);
 
-  await page.getByRole('button', { name: /add an account/i }).click();
+  await page.getByRole('button', { name: /add a password/i }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Title', { exact: true }).fill('Steam');
   await dialog.getByLabel('Username', { exact: true }).fill('gamer42');

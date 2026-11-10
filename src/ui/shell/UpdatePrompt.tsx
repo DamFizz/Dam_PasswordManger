@@ -36,7 +36,7 @@ export function UpdatePrompt() {
   if (!update && !offlineReady) return null;
   return (
     <div className="fixed inset-x-0 top-0 z-[70] flex justify-center px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-      <div className="animate-toast-in flex max-w-md items-center gap-3 rounded-2xl border border-line bg-surface-2 px-4 py-3 shadow-strong">
+      <div className="animate-toast-in flex max-w-md items-center gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3 shadow-strong">
         <RefreshCw className="size-5 shrink-0 text-accent" />
         <p className="text-sm text-fg">{update ? t('update.available') : t('update.offlineReady')}</p>
         {update && (
