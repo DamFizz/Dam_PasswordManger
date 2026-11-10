@@ -309,7 +309,7 @@ function CsvImportCard() {
                     }
                     return id;
                   };
-                  const { items } = csvToItems(preview, folderId, now);
+                  const { items } = csvToItems(preview, folderId, now, session.settings().repromptByDefault);
                   if (created.length) await session.saveCollections(created);
                   await session.saveItems(items);
                   setDone(items.length);

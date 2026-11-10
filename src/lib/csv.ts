@@ -96,7 +96,7 @@ export interface CsvImportResult {
   folders: string[];
 }
 
-export function csvToItems(preview: CsvImportPreview, folderIds: (name: string) => string | null, now = Date.now()): CsvImportResult {
+export function csvToItems(preview: CsvImportPreview, folderIds: (name: string) => string | null, now = Date.now(), reprompt = false): CsvImportResult {
   const get = (row: string[], f: CsvField) => {
     const idx = preview.mapping[f];
     return idx === undefined ? '' : (row[idx] ?? '').trim();
@@ -142,7 +142,7 @@ export function csvToItems(preview: CsvImportPreview, folderIds: (name: string) 
       tags,
       customFields: custom,
       favorite: fav === '1' || fav === 'true' || fav === 'yes',
-      reprompt: false,
+      reprompt,
       archivedAt: null,
       trashedAt: null,
       categoryId: null,

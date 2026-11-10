@@ -806,6 +806,8 @@ export const ms: Dictionary = {
   'setup.backup': 'Buat sandaran',
   'settings.advanced': 'Lanjutan',
   'list.count': '{n} item',
+  'settings.repromptDefault': 'Minta kata laluan induk untuk item baharu',
+  'settings.repromptDefaultHelp': 'Item baharu memerlukan kata laluan induk sebelum kata laluannya ditunjuk atau disalin. Anda masih boleh mematikannya untuk setiap item.',
   'view.grid': 'Paparan grid',
   'view.list': 'Paparan senarai',
 };

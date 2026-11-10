@@ -79,6 +79,8 @@ export interface VaultSettings {
   defaultCategoryId: string | null;
   oldPasswordDays: number;
   trashRetentionDays: number; // 0 = keep until emptied
+  /** new items ask for the master password before revealing/copying secrets */
+  repromptByDefault: boolean;
   updatedAt: number;
 }
 
@@ -89,6 +91,7 @@ export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   defaultCategoryId: null,
   oldPasswordDays: 365,
   trashRetentionDays: 30,
+  repromptByDefault: true,
   updatedAt: 0,
 };
 

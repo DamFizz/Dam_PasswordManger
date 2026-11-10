@@ -37,8 +37,12 @@ test('create, add, lock, reload, unlock, work offline — with no CSP violations
   await dialog.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: 'Steam', level: 2 })).toBeVisible();
   await expect(page.getByText('Steam-Pass-Very-Secret-1')).toHaveCount(0);
+  // New items are protected by default: revealing asks for the master password
   await page.getByRole('button', { name: 'Show Password' }).click();
-  await expect(page.getByText('Steam-Pass-Very-Secret-1')).toBeVisible();
+  const prompt = page.getByRole('dialog', { name: 'Protected item' });
+  await prompt.getByLabel('Master password', { exact: true }).fill(MASTER);
+  await prompt.getByRole('button', { name: 'Unlock item' }).click();
+  await expect(page.getByText('Steam-Pass-Very-Secret-1')).toBeVisible({ timeout: 15_000 });
 
   // Nothing readable is persisted
   const stored = await page.evaluate(

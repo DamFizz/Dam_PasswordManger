@@ -133,6 +133,14 @@ describe('item management', () => {
     expect(s.collections().find((c) => c.id === child.id)?.parentId).toBeNull();
   });
 
+  it('protects new items with the master-password prompt by default', async () => {
+    const repo = freshRepo();
+    const s = await createVault(repo, STRONG_PASSWORD);
+    expect(s.settings().repromptByDefault).toBe(true);
+    await s.saveSettings({ repromptByDefault: false });
+    expect(s.settings().repromptByDefault).toBe(false);
+  });
+
   it('stores device-only activity encrypted', async () => {
     const repo = freshRepo();
     const s = await createVault(repo, STRONG_PASSWORD);

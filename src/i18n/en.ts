@@ -828,6 +828,8 @@ export const en = {
   'setup.backup': 'Make a backup',
   'settings.advanced': 'Advanced',
   'list.count': '{n} items',
+  'settings.repromptDefault': 'Ask for master password on new items',
+  'settings.repromptDefaultHelp': 'New items require your master password before their passwords are shown or copied. You can still turn it off per item.',
   'view.grid': 'Grid view',
   'view.list': 'List view',
 } as const;

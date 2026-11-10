@@ -47,13 +47,17 @@ describe('MyVault UI (end-to-end in jsdom)', () => {
     expect(document.body.textContent).not.toContain('Insta-Secret-991!');
     expect(screen.getByText('dam@example.com')).toBeInTheDocument();
 
-    // Copy works without revealing
+    // New items ask for the master password by default before copying or revealing
     await user.click(screen.getAllByRole('button', { name: 'Copy Password' })[0]);
-    // user-event provides an in-memory clipboard
+    const prompt = await screen.findByRole('dialog', { name: 'Protected item' });
+    await user.type(within(prompt).getByLabelText('Master password'), MASTER);
+    await user.click(within(prompt).getByRole('button', { name: 'Unlock item' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Protected item' })).not.toBeInTheDocument());
+    // Copy works without revealing; user-event provides an in-memory clipboard
     expect(await navigator.clipboard.readText()).toBe('Insta-Secret-991!');
     expect(document.body.textContent).not.toContain('Insta-Secret-991!');
 
-    // Reveal → visible; hide → masked again
+    // Reveal → visible (no second prompt within the grace period); hide → masked again
     await user.click(screen.getByRole('button', { name: 'Show Password' }));
     expect(screen.getByText('Insta-Secret-991!')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Hide Password' }));

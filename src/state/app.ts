@@ -249,6 +249,7 @@ export function newItemTemplate(type: ItemType, preset: Partial<VaultItem> = {})
     if (route.filter.kind === 'favorites') base.favorite = true;
   }
   if (!base.categoryId && settings.defaultCategoryId) base.categoryId = settings.defaultCategoryId;
+  base.reprompt = settings.repromptByDefault;
   return { ...base, ...preset };
 }
 

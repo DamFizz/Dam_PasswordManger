@@ -473,6 +473,9 @@ export function SettingsView() {
           </SectionCard>
 
           <SectionCard title={t('settings.advanced')}>
+            <div className="mb-4 border-b border-line pb-3">
+              <Switch checked={settings.repromptByDefault} onChange={(v) => void session.saveSettings({ repromptByDefault: v })} label={t('settings.repromptDefault')} description={t('settings.repromptDefaultHelp')} />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <SelectField
                 label={t('settings.defaultCategory')}
