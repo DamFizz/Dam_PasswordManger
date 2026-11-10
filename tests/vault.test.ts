@@ -3,8 +3,10 @@ import {
   changeMasterPassword,
   createRecoveryKey,
   createVault,
+  deviceTrustedUntil,
   disableTotp,
   enableTotp,
+  forgetDeviceTrust,
   InvalidCodeError,
   unlockWithPassword,
   unlockWithRecoveryKey,
@@ -239,6 +241,66 @@ describe('Google Authenticator (TOTP) second factor', () => {
     expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('unlocked');
   });
 
+  it('a trusted device skips the code until the trust is forgotten', async () => {
+    const { repo, secret } = await vaultWithTotp();
+    let step = await unlockWithPassword(repo, STRONG_PASSWORD);
+    if (step.type !== 'second-factor') throw new Error();
+    const s = await step.challenge.verifyTotp(await totp(secret), 30);
+    const until = await deviceTrustedUntil(s);
+    expect(until).toBeGreaterThan(Date.now() + 29 * 86_400_000);
+    s.lock();
+
+    // Next unlock on this device: master password only
+    step = await unlockWithPassword(repo, STRONG_PASSWORD);
+    expect(step.type).toBe('unlocked');
+    if (step.type !== 'unlocked') return;
+    // The wrong password is still rejected on a trusted device
+    await expect(unlockWithPassword(repo, 'wrong-password-123')).rejects.toBeInstanceOf(WrongPasswordError);
+
+    await forgetDeviceTrust(step.session);
+    expect(await deviceTrustedUntil(step.session)).toBeNull();
+    step.session.lock();
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+  });
+
+  it('does not trust the device when the box is left unticked', async () => {
+    const { repo, secret } = await vaultWithTotp();
+    const step = await unlockWithPassword(repo, STRONG_PASSWORD);
+    if (step.type !== 'second-factor') throw new Error();
+    (await step.challenge.verifyTotp(await totp(secret))).lock();
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+  });
+
+  it('ignores a forged, expired, copied or outdated trust token', async () => {
+    const { repo, secret } = await vaultWithTotp();
+    const step = await unlockWithPassword(repo, STRONG_PASSWORD);
+    if (step.type !== 'second-factor') throw new Error();
+    const s = await step.challenge.verifyTotp(await totp(secret), 30);
+    s.lock();
+    const key = `totpTrust:${s.vaultId}`;
+    const token = (await repo.getLocal<{ until: number; enrolledAt: number; mac: string }>(key))!;
+    const device = (await repo.getLocal<{ id: string; name: string }>('device'))!;
+
+    // Extending the expiry by hand breaks the MAC
+    await repo.setLocal(key, { ...token, until: token.until + 365 * 86_400_000 });
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+    // A token copied to another device (different device id) does not work there
+    await repo.setLocal(key, token);
+    await repo.setLocal('device', { ...device, id: 'another-device' });
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+    await repo.setLocal('device', device);
+    // An expired token is ignored (and removed)
+    await repo.setLocal(key, { ...token, until: Date.now() - 1 });
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+    expect(await repo.getLocal(key)).toBeUndefined();
+    // A token from before the Authenticator was set up again is ignored
+    await repo.setLocal(key, { ...token, enrolledAt: token.enrolledAt - 1 });
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('second-factor');
+    // The untouched token still works
+    await repo.setLocal(key, token);
+    expect((await unlockWithPassword(repo, STRONG_PASSWORD)).type).toBe('unlocked');
+  });
+
   it('cannot be bypassed by editing the stored header', async () => {
     const { repo } = await vaultWithTotp();
     const header = (await repo.getHeader())!;
@@ -289,5 +351,18 @@ describe('master password change and recovery key', () => {
     (await step.challenge.verifyTotp(await totp(secret))).lock();
     const next = await unlockWithPassword(repo, 'Another-Pass-123');
     expect(next.type).toBe('second-factor');
+  });
+
+  it('a forgotten password always needs the Authenticator, even on a trusted device', async () => {
+    const repo = freshRepo();
+    const s = await createVault(repo, STRONG_PASSWORD);
+    const key = await createRecoveryKey(s, STRONG_PASSWORD);
+    const secret = generateTotpSecret();
+    await enableTotp(s, secret, await totp(secret, Date.now() - 30_000));
+    s.lock();
+    const first = await unlockWithPassword(repo, STRONG_PASSWORD);
+    if (first.type !== 'second-factor') throw new Error();
+    (await first.challenge.verifyTotp(await totp(secret), 30)).lock();
+    expect((await unlockWithRecoveryKey(repo, key, 'Another-Pass-123')).type).toBe('second-factor');
   });
 });

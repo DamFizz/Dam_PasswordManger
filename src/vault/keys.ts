@@ -53,6 +53,21 @@ export async function deriveVaultKeys(vkRaw: Uint8Array<ArrayBuffer>, vaultId: s
   return { vaultId, records, security, local };
 }
 
+/**
+ * HMAC key that signs this device's "trusted for two-step" token. It is derived from the
+ * vault key, so a token can only be created or checked after the master password is correct.
+ */
+export async function deviceTrustKey(vkRaw: Uint8Array<ArrayBuffer>, vaultId: string): Promise<CryptoKey> {
+  const base = await importHkdfBase(vkRaw);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: utf8Encode(vaultId), info: utf8Encode('myvault/v1/device-trust') },
+    base,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false,
+    ['sign', 'verify'],
+  );
+}
+
 /** Derive the key-encryption key from the master password (slow by design). */
 export async function passwordKek(password: string, kdf: KdfParams, vaultId: string): Promise<CryptoKey> {
   const stretched = await deriveFromPassword(password, kdf);

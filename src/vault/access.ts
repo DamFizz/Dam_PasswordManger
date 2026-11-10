@@ -4,13 +4,15 @@
  * Unlock flow:
  *   1. Throttle check
  *   2. Master password → Argon2id → KEK → unwrap vault key (fails on wrong password: GCM auth)
- *   3. Decrypt security config. If an Authenticator is enrolled it is MANDATORY:
- *      the vault key stays in this module's closure until a valid TOTP code
- *      (or a single-use recovery code) is supplied. There is no bypass path.
+ *   3. Decrypt security config. If an Authenticator is enrolled, the vault key stays in this
+ *      module's closure until a valid TOTP code (or a single-use recovery code) is supplied —
+ *      unless this device was trusted after an earlier successful code (see "trusted device").
+ *      The trust token is local to this device, MAC'd with a key derived from the vault key,
+ *      bound to the device id and the current Authenticator enrollment, and expires.
  *   4. Derive subkeys, wipe the raw vault key, open the session.
  */
 import { DecryptionError, newKdfParams, openJson, sealJson } from '../lib/crypto';
-import { randomId, wipe } from '../lib/encoding';
+import { base64ToBytes, bytesToBase64, randomId, utf8Encode, wipe } from '../lib/encoding';
 import { detectClockDrift, verifyTotp } from '../lib/totp';
 import type { VaultRepository } from './db';
 import { starterCollections } from './defaults';
@@ -18,6 +20,7 @@ import { getDevice } from './device';
 import {
   aad,
   deriveVaultKeys,
+  deviceTrustKey,
   generateRecoveryCodes,
   generateRecoveryKey,
   generateVaultKey,
@@ -125,7 +128,8 @@ export interface SecondFactorChallenge {
   expiresAt: number;
   /** remaining recovery codes (count only) */
   recoveryCodesLeft: number;
-  verifyTotp(code: string): Promise<VaultSession>;
+  /** `trustDays` > 0 skips the code on this device for that many days */
+  verifyTotp(code: string, trustDays?: number): Promise<VaultSession>;
   useRecoveryCode(code: string): Promise<VaultSession>;
   cancel(): void;
 }
@@ -154,6 +158,56 @@ async function openSession(
   }
 }
 
+// ----------------------------------------------------------------------------- trusted device
+
+interface DeviceTrustToken {
+  until: number;
+  enrolledAt: number;
+  mac: string;
+}
+
+const trustKeyName = (vaultId: string) => `totpTrust:${vaultId}`;
+const trustMessage = (vaultId: string, deviceId: string, enrolledAt: number, until: number) =>
+  utf8Encode(`myvault/v1/device-trust/${vaultId}/${deviceId}/${enrolledAt}/${until}`);
+
+async function isDeviceTrusted(repo: VaultRepository, vk: Uint8Array<ArrayBuffer>, header: VaultHeader, totp: TotpSettings): Promise<boolean> {
+  const token = await repo.getLocal<DeviceTrustToken>(trustKeyName(header.vaultId));
+  if (!token) return false;
+  if (token.until <= Date.now() || token.enrolledAt !== totp.enrolledAt) {
+    await repo.deleteLocal(trustKeyName(header.vaultId));
+    return false;
+  }
+  try {
+    const device = await getDevice(repo);
+    const key = await deviceTrustKey(vk, header.vaultId);
+    return await crypto.subtle.verify('HMAC', key, base64ToBytes(token.mac), trustMessage(header.vaultId, device.id, token.enrolledAt, token.until));
+  } catch {
+    return false;
+  }
+}
+
+async function trustDevice(repo: VaultRepository, vk: Uint8Array<ArrayBuffer>, header: VaultHeader, totp: TotpSettings, days: number): Promise<void> {
+  const until = Date.now() + days * 86_400_000;
+  const device = await getDevice(repo);
+  const key = await deviceTrustKey(vk, header.vaultId);
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, trustMessage(header.vaultId, device.id, totp.enrolledAt, until)));
+  await repo.setLocal<DeviceTrustToken>(trustKeyName(header.vaultId), { until, enrolledAt: totp.enrolledAt, mac: bytesToBase64(mac) });
+}
+
+/** When this device stops skipping the two-step code, or null if it is not trusted. */
+export async function deviceTrustedUntil(session: VaultSession): Promise<number | null> {
+  const totp = session.security.totp;
+  if (!totp) return null;
+  const token = await session.repo.getLocal<DeviceTrustToken>(trustKeyName(session.vaultId));
+  if (!token || token.until <= Date.now() || token.enrolledAt !== totp.enrolledAt) return null;
+  return token.until;
+}
+
+/** Ask for the two-step code on this device again from the next unlock. */
+export async function forgetDeviceTrust(session: VaultSession): Promise<void> {
+  await session.repo.deleteLocal(trustKeyName(session.vaultId));
+}
+
 async function decryptSecurity(vk: Uint8Array<ArrayBuffer>, header: VaultHeader): Promise<SecurityConfig> {
   const keys = await deriveVaultKeys(vk, header.vaultId);
   return openJson<SecurityConfig>(keys.security, header.security, aad.security(header.vaultId, header.rev, header.vtag));
@@ -165,6 +219,7 @@ async function continueUnlock(
   vk: Uint8Array<ArrayBuffer>,
   header: VaultHeader,
   finalize?: Finalizer,
+  allowTrustedDevice = true,
 ): Promise<UnlockStep> {
   let security: SecurityConfig;
   try {
@@ -174,7 +229,7 @@ async function continueUnlock(
     throw e;
   }
 
-  if (!security.totp) {
+  if (!security.totp || (allowTrustedDevice && (await isDeviceTrusted(repo, vk, header, security.totp)))) {
     await recordSuccess(repo);
     return { type: 'unlocked', session: await openSession(repo, vk, header, security, finalize) };
   }
@@ -199,7 +254,7 @@ async function continueUnlock(
   const challenge: SecondFactorChallenge = {
     expiresAt,
     recoveryCodesLeft: security.recoveryCodeHashes.length,
-    async verifyTotp(code) {
+    async verifyTotp(code, trustDays = 0) {
       await assertNotThrottled(repo);
       const key = take();
       const replayKey = `totpLastStep:${header.vaultId}`;
@@ -211,6 +266,7 @@ async function continueUnlock(
       }
       await repo.setLocal(replayKey, res.step);
       await recordSuccess(repo);
+      if (trustDays > 0) await trustDevice(repo, key, header, totpCfg, trustDays);
       release();
       return openSession(repo, key, header, security, finalize);
     },
@@ -315,7 +371,7 @@ export async function unlockWithRecoveryKey(repo: VaultRepository, recoveryKey: 
     next.security = await sealJson(keys.security, sec, aad.security(next.vaultId, next.rev, next.vtag));
     await repo.putHeader(next);
     return next;
-  });
+  }, false); // a forgotten password always needs the two-step code, even on a trusted device
 }
 
 // ----------------------------------------------------------------------------- re-authentication

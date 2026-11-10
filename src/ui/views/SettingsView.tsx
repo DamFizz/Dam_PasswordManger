@@ -30,7 +30,9 @@ import { confirmDialog, requestReauth, toast, toastError } from '../../state/ui'
 import {
   changeMasterPassword,
   createRecoveryKey,
+  deviceTrustedUntil,
   disableTotp,
+  forgetDeviceTrust,
   InvalidCodeError,
   regenerateRecoveryCodes,
   removeRecoveryKey,
@@ -165,6 +167,7 @@ export function SettingsView() {
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
   const [quick, setQuick] = useState<{ possible: boolean; enabled: boolean }>({ possible: false, enabled: false });
   const [deviceName, setDeviceName] = useState(session?.device.name ?? '');
+  const [trustedUntil, setTrustedUntil] = useState<number | null>(null);
   const [storage, setStorage] = useState<{ usage?: number; quota?: number; records: number; snapshots: number } | null>(null);
   const [, force] = useState(0);
   const security = session?.security;
@@ -176,6 +179,7 @@ export function SettingsView() {
     void (async () => {
       setQuick({ possible: await isQuickUnlockPossible(), enabled: !!(await getQuickUnlock(getRepo(), session.vaultId)) });
       setStorage(await getRepo().storageEstimate());
+      setTrustedUntil(await deviceTrustedUntil(session));
     })();
   }, [session]);
 
@@ -261,6 +265,26 @@ export function SettingsView() {
                   </Button>
                 )}
               </Row>
+              {security.totp && (
+                <Row
+                  icon={<Smartphone />}
+                  title={t('settings.trustedDevice')}
+                  description={trustedUntil ? t('settings.trustedDeviceOn', { date: formatDate(trustedUntil) }) : t('settings.trustedDeviceOff')}
+                >
+                  {trustedUntil && (
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        await forgetDeviceTrust(session);
+                        setTrustedUntil(null);
+                        toast(t('settings.trustedDeviceForgotten'));
+                      }}
+                    >
+                      {t('settings.trustedDeviceForget')}
+                    </Button>
+                  )}
+                </Row>
+              )}
               {security.totp && (
                 <Row icon={<LifeBuoy />} title={t('settings.recoveryCodes')} description={t('settings.recoveryCodesHelp', { n: security.recoveryCodeHashes.length })}>
                   <Button

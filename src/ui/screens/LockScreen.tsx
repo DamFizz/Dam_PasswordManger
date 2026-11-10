@@ -9,7 +9,7 @@ import { getQuickUnlock, isQuickUnlockPossible, quickUnlock } from '../../vault/
 import { getThrottleState, ThrottledError } from '../../vault/throttle';
 import { Button } from '../components/Button';
 import { OtpInput } from '../components/Feedback';
-import { TextField } from '../components/Field';
+import { Checkbox, TextField } from '../components/Field';
 import { Logo } from '../components/Misc';
 import { Modal } from '../components/Modal';
 import { PasswordInput } from '../components/Secret';
@@ -27,6 +27,9 @@ function useCountdown(until: number | null): number {
   return until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0;
 }
 
+/** After a correct two-step code, this device can skip the code for this long. */
+const TRUST_DAYS = 30;
+
 export function LockScreen() {
   const t = useT();
   const lockReason = useApp((s) => s.lockReason);
@@ -37,6 +40,7 @@ export function LockScreen() {
   const [challenge, setChallenge] = useState<SecondFactorChallenge | null>(null);
   const [code, setCode] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [quick, setQuick] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -93,7 +97,7 @@ export function LockScreen() {
     setBusy(true);
     setError(null);
     try {
-      const session = useRecovery ? await challenge.useRecoveryCode(value) : await challenge.verifyTotp(value);
+      const session = useRecovery ? await challenge.useRecoveryCode(value) : await challenge.verifyTotp(value, trustDevice ? TRUST_DAYS : 0);
       setChallenge(null);
       await attachSession(session);
       if (useRecovery) toast(t('lock.recoveryCodeUsed', { n: session.security.recoveryCodeHashes.length }), { kind: 'info', duration: 8000 });
@@ -213,6 +217,9 @@ export function LockScreen() {
                       {error}
                     </p>
                   )}
+                  <div className="flex justify-center">
+                    <Checkbox checked={trustDevice} onChange={setTrustDevice} label={t('lock.trustDevice', { n: TRUST_DAYS })} />
+                  </div>
                   <Button variant="primary" size="lg" block loading={busy} disabled={code.length !== 6 || remaining > 0} onClick={() => void verifyCode()}>
                     {t('lock.verify')}
                   </Button>

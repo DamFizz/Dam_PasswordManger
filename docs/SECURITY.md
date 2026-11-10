@@ -28,7 +28,7 @@ VK ──HKDF──► records key · security key · device-local key        (i
 |---|---|
 | IndexedDB `meta` | Vault header (ciphertext and KDF parameters) |
 | IndexedDB `records` | Encrypted records |
-| IndexedDB `local` | Device id and name, failed-attempt counter, last TOTP step, sync bookkeeping (record ids, random version tags, timestamps), quick-unlock wrap (ciphertext), and *device secrets* encrypted with the vault's device key: Google access token, account email, recently-used timestamps, conflict notices |
+| IndexedDB `local` | Device id and name, failed-attempt counter, last TOTP step, trusted-device token (expiry + HMAC), sync bookkeeping (record ids, random version tags, timestamps), quick-unlock wrap (ciphertext), and *device secrets* encrypted with the vault's device key: Google access token, account email, recently-used timestamps, conflict notices |
 | IndexedDB `snapshots` | Encrypted safety copies taken before restores and downloads |
 | localStorage | Appearance and timer preferences, generator settings, and the Google OAuth **client ID** (public). No vault data. |
 | sessionStorage | Briefly, during the OAuth redirect flow only: the OAuth `state`, and the access token until the vault is unlocked and it is encrypted |
@@ -58,9 +58,13 @@ VK ──HKDF──► records key · security key · device-local key        (i
 A 6-digit code cannot encrypt anything: it has only about 20 bits and changes every 30 seconds. MyVault therefore:
 
 1. **Always** encrypts the vault with a key derived from the master password.
-2. Stores the TOTP secret **encrypted inside the vault**. Unlocking means: password → unwrap vault key (held only in a closure, never exposed) → decrypt the TOTP secret → verify the code → only then open the vault. There is no password-only button. Recovery uses single-use recovery codes, and the recovery key still requires the TOTP or a recovery code.
+2. Stores the TOTP secret **encrypted inside the vault**. Unlocking means: password → unwrap vault key (held only in a closure, never exposed) → decrypt the TOTP secret → verify the code → only then open the vault. There is no password-only button. Recovery uses single-use recovery codes, and the recovery key still requires the TOTP or a recovery code, even on a trusted device.
 
 Because MyVault has **no server**, the second factor is enforced by the app, not by cryptography. Someone who has **both** your master password **and** a copy of the encrypted data can decrypt the vault with their own code without a TOTP code. TOTP in MyVault therefore protects against someone who learned your master password (shoulder-surfed or phished) and tries to open MyVault on your device or with your Google account. It does **not** add cryptographic strength against offline attacks. Your master password must stand on its own.
+
+**Trusted device.** After a correct code, the user can tick "Don't ask again on this device for 30 days" (ticked by default). The device then stores a token in its local storage: the expiry time and the Authenticator enrollment time, signed with HMAC-SHA-256 under a key derived from the vault key, the vault id and this device's id. On the next unlock the token is checked only after the master password has unwrapped the vault key. It is ignored, and the code is asked for, when the MAC does not verify, when it has expired, when it was copied to another device (different device id), when the Authenticator was set up again, or when the master password is being reset with the recovery key. The token is never synced. Settings → Security → "Two-step on this device" shows the expiry and has **Ask every time**.
+
+Trade-off: on a trusted device, someone who knows your master password can open the vault without your phone, until the trust expires. Leave the box unticked on shared or public computers. A new device, a reinstall, or cleared site data always asks for the code.
 
 ## 5. Synchronisation and Google
 
