@@ -2,7 +2,28 @@
 
 MyVault is a static site. The host only delivers the app files and never receives vault data. PWA installation and service workers require **HTTPS**. Free tiers can change, so no host promises permanent availability. That is fine here: your vault lives on your devices, and a hosting outage only stops *new* devices from loading the app until you redeploy elsewhere.
 
-## Recommended: Cloudflare Pages (free)
+## Firebase Hosting (free Spark plan)
+
+`firebase.json` is already set up: it serves `dist/` with the same security headers as `public/_headers` (CSP, `frame-ancestors 'none'`, HSTS and others) and correct caching for the service worker.
+
+1. Create a project at https://console.firebase.google.com → **Add project** (Google Analytics is not needed — turn it off). Note the **project ID**, e.g. `myvault-dam`.
+2. Log in once (opens your browser):
+   ```bash
+   npm run firebase -- login
+   ```
+3. Link this folder to your project (replace the ID):
+   ```bash
+   npm run firebase -- use --add myvault-dam
+   ```
+4. Build and deploy:
+   ```bash
+   npm run deploy:firebase
+   ```
+   You get `https://myvault-dam.web.app` (and `.firebaseapp.com`). Redeploy the same way after changes.
+
+For Google Drive sync, add `https://myvault-dam.web.app` as an authorised origin and `https://myvault-dam.web.app/oauth-callback.html` as a redirect URI in your OAuth client (GOOGLE_DRIVE_SETUP.md). Firebase Hosting only serves the app files — it never receives your vault.
+
+## Alternative: Cloudflare Pages (free)
 
 Cloudflare Pages honours `public/_headers`, so you get the full security headers (CSP, `frame-ancestors 'none'`, HSTS and others).
 
