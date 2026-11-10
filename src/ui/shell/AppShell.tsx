@@ -118,7 +118,7 @@ export function AppShell() {
     route.name === 'items'
       ? route.filter.kind === 'favorites'
         ? t('nav.favorites')
-        : route.filter.kind === 'section'
+        : route.filter.kind === 'section' || route.filter.kind === 'category'
           ? (collections.find((c) => c.id === (route.filter as { id: string }).id)?.name ?? t('nav.all'))
           : t('nav.all')
       : route.name === 'generator'

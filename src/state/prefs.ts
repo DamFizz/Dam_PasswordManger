@@ -23,6 +23,8 @@ export interface Prefs {
   /** clear clipboard even when its contents cannot be verified */
   clipboardForceClear: boolean;
   sidebarCollapsed: boolean;
+  /** what the sidebar lists under All items: categories or folders */
+  sidebarGroup: 'categories' | 'folders';
   viewMode: 'list' | 'grid';
   sortBy: 'title' | 'updated' | 'created' | 'used';
   autoSync: boolean;
@@ -42,6 +44,7 @@ export const DEFAULT_PREFS: Prefs = {
   clipboardClearSeconds: 30,
   clipboardForceClear: false,
   sidebarCollapsed: false,
+  sidebarGroup: 'categories',
   viewMode: 'list',
   sortBy: 'title',
   autoSync: true,

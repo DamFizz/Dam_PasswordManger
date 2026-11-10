@@ -5,6 +5,7 @@ import { lock, moveItems, navigate, openEditor, useApp, type Route } from '../..
 import { setPrefs, usePrefs } from '../../state/prefs-store';
 import type { Collection } from '../../vault/types';
 import { Button, IconButton } from '../components/Button';
+import { Segmented } from '../components/Field';
 import { Logo } from '../components/Misc';
 import { cx } from '../cx';
 import { CollectionIcon } from '../icons';
@@ -26,7 +27,7 @@ interface NavProps {
   count?: number;
   collapsed: boolean;
   onNavigate?: () => void;
-  dropTarget?: { sectionId?: string | null };
+  dropTarget?: { sectionId?: string | null; categoryId?: string | null };
   depth?: number;
   trailing?: ReactNode;
 }
@@ -140,9 +141,9 @@ function FolderTree({ sections, parentId, depth, collapsed, onNavigate, counts }
 }
 
 /**
- * Main navigation. Deliberately short: everything you need daily (your items and folders)
- * plus three tools. Types, categories, archive and trash live in the list's filter menu;
- * sync, backup and organising live in Settings.
+ * Main navigation: All items and Favorites, then your categories or folders (switchable),
+ * plus three tools. Types, archive and trash live in the list's filter menu; sync, backup
+ * and organising live in Settings.
  */
 export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'desktop' | 'drawer'; onNavigate?: () => void }) {
   const t = useT();
@@ -156,8 +157,8 @@ export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'deskto
     const ctx = { collections, usage };
     const folders = new Map<string, number>();
     for (const c of collections) {
-      if (c.kind !== 'section') continue;
-      folders.set(c.id, items.filter((i) => matchesFilter(i, { kind: 'section', id: c.id }, { ...ctx, sectionScope: descendantSectionIds(collections, c.id) })).length);
+      if (c.kind === 'section') folders.set(c.id, items.filter((i) => matchesFilter(i, { kind: 'section', id: c.id }, { ...ctx, sectionScope: descendantSectionIds(collections, c.id) })).length);
+      else folders.set(c.id, items.filter((i) => matchesFilter(i, { kind: 'category', id: c.id }, ctx)).length);
     }
     return {
       all: items.filter((i) => matchesFilter(i, { kind: 'all' }, ctx)).length,
@@ -167,6 +168,8 @@ export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'deskto
   }, [items, collections, usage]);
 
   const folders = collections.filter((c) => c.kind === 'section');
+  const categories = collections.filter((c) => c.kind === 'category').sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.order - b.order || a.name.localeCompare(b.name));
+  const group = prefs.sidebarGroup;
   const nav = (p: Omit<NavProps, 'collapsed' | 'onNavigate'>) => <NavItem {...p} collapsed={collapsed} onNavigate={onNavigate} />;
 
   return (
@@ -211,27 +214,55 @@ export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'deskto
           {nav({ icon: <Star />, label: t('nav.favorites'), route: { name: 'items', filter: { kind: 'favorites' } }, count: counts.favorites })}
         </div>
 
-        <div className={cx(collapsed ? 'mt-3 border-t border-line pt-3' : 'mt-6')}>
+        <div className={cx(collapsed ? 'mt-3 border-t border-line pt-3' : 'mt-5')}>
           {!collapsed && (
-            <div className="mb-1 flex items-center justify-between pl-2 pr-1">
-              <span className="text-xs font-medium text-faint">{t('nav.folders')}</span>
+            <div className="mb-2 flex items-center gap-1.5">
+              <div className="min-w-0 flex-1">
+                <Segmented
+                  label={t('nav.browseBy')}
+                  value={group}
+                  onChange={(v) => setPrefs({ sidebarGroup: v })}
+                  size="sm"
+                  block
+                  options={[
+                    { value: 'categories', label: t('nav.categories') },
+                    { value: 'folders', label: t('nav.folders') },
+                  ]}
+                />
+              </div>
               <button
                 type="button"
-                aria-label={t('organize.newSection')}
-                title={t('organize.newSection')}
-                className="flex size-6 items-center justify-center rounded text-faint hover:bg-surface-2 hover:text-fg cursor-pointer"
+                aria-label={group === 'categories' ? t('organize.newCategory') : t('organize.newSection')}
+                title={group === 'categories' ? t('organize.newCategory') : t('organize.newSection')}
+                className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg cursor-pointer"
                 onClick={() => {
-                  navigate({ name: 'organize', create: 'section' });
+                  navigate({ name: 'organize', create: group === 'categories' ? 'category' : 'section' });
                   onNavigate?.();
                 }}
               >
-                <Plus className="size-3.5" />
+                <Plus className="size-4" />
               </button>
             </div>
           )}
           <div className="space-y-px">
-            {folders.length === 0 && !collapsed ? (
-              <p className="px-2 py-1 text-[13px] text-faint">{t('nav.noFolders')}</p>
+            {group === 'categories' ? (
+              categories.length === 0 && !collapsed ? (
+                <p className="px-3 py-1 text-[13px] text-faint">{t('organize.noCategories')}</p>
+              ) : (
+                categories.map((c) => (
+                  <div key={c.id}>
+                    {nav({
+                      icon: <CollectionIcon name={c.icon} color={c.color} />,
+                      label: c.name,
+                      route: { name: 'items', filter: { kind: 'category', id: c.id } },
+                      count: counts.folders.get(c.id),
+                      dropTarget: { categoryId: c.id },
+                    })}
+                  </div>
+                ))
+              )
+            ) : folders.length === 0 && !collapsed ? (
+              <p className="px-3 py-1 text-[13px] text-faint">{t('nav.noFolders')}</p>
             ) : (
               <FolderTree sections={folders} parentId={null} depth={0} collapsed={collapsed} onNavigate={onNavigate} counts={counts.folders} />
             )}

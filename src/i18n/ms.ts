@@ -808,6 +808,7 @@ export const ms: Dictionary = {
   'list.count': '{n} item',
   'settings.repromptDefault': 'Minta kata laluan induk untuk item baharu',
   'settings.repromptDefaultHelp': 'Item baharu memerlukan kata laluan induk sebelum kata laluannya ditunjuk atau disalin. Anda masih boleh mematikannya untuk setiap item.',
+  'nav.browseBy': 'Lihat mengikut',
   'view.grid': 'Paparan grid',
   'view.list': 'Paparan senarai',
 };

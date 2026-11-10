@@ -185,15 +185,17 @@ export function Segmented<T extends string>({
   options,
   label,
   size = 'md',
+  block = false,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: ReactNode; icon?: ReactNode }[];
   label: string;
   size?: 'sm' | 'md';
+  block?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-[var(--seg-track)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.15)]">
+    <div role="radiogroup" aria-label={label} className={cx(block ? 'flex w-full [&>button]:flex-1' : 'inline-flex', 'rounded-full bg-[var(--seg-track)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.15)]')}>
       {options.map((o) => (
         <button
           key={o.value}
