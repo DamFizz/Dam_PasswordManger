@@ -18,7 +18,7 @@ import { useT } from '../../i18n';
 import { isAcceptableMasterPassword } from '../../lib/strength';
 import { app, attachSession, createNewVault, getRepo } from '../../state/app';
 import { setPrefs, usePrefs } from '../../state/prefs-store';
-import { connectGoogle, downloadCloudVault, hasClientId } from '../../state/sync-controller';
+import { connectGoogle, downloadCloudVault, useClientId } from '../../state/sync-controller';
 import { toastError } from '../../state/ui';
 import { createRecoveryKey } from '../../vault/access';
 import { BackupPasswordError, CorruptBackupError, inspectBackup, openBackup, restoreReplace } from '../../vault/backup';
@@ -106,6 +106,7 @@ function Feature({ icon, title, children }: { icon: ReactNode; title: string; ch
 export function Onboarding() {
   const t = useT();
   const [step, setStep] = useState<Step>('welcome');
+  const hasClientId = !!useClientId();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [ack, setAck] = useState(false);
@@ -346,7 +347,7 @@ export function Onboarding() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.sync.title')}</h1>
         <p className="mt-2 leading-relaxed text-muted">{t('onboarding.sync.body')}</p>
-        {!hasClientId() && (
+        {!hasClientId && (
           <div className="mt-4">
             <GoogleSetupHelp compact />
           </div>
@@ -356,7 +357,7 @@ export function Onboarding() {
             variant="primary"
             size="lg"
             block
-            disabled={!hasClientId()}
+            disabled={!hasClientId}
             loading={busy}
             onClick={async () => {
               setBusy(true);
@@ -415,7 +416,7 @@ export function Onboarding() {
       <Shell onBack={() => setStep('restore')}>
         <h1 className="text-2xl font-semibold tracking-tight">{t('onboarding.restore.drive')}</h1>
         <p className="mt-2 leading-relaxed text-muted">{t('onboarding.restore.driveSteps')}</p>
-        {!hasClientId() && (
+        {!hasClientId && (
           <div className="mt-4">
             <GoogleSetupHelp compact />
           </div>
@@ -430,7 +431,7 @@ export function Onboarding() {
           size="lg"
           block
           className="mt-8"
-          disabled={!hasClientId()}
+          disabled={!hasClientId}
           loading={busy}
           onClick={async () => {
             setBusy(true);

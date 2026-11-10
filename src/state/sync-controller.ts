@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 /**
  * Connects the UI to the sync engine and Google Drive: connection status, automatic
  * syncing (after local changes, when coming back online, periodically), error mapping.
@@ -15,6 +16,7 @@ import {
   requestTokenPopup,
   revokeToken,
   startRedirectSignIn,
+  subscribeClientId,
   type GoogleToken,
 } from '../sync/google-auth';
 import { RemoteError } from '../sync/remote';
@@ -301,6 +303,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export function hasClientId(): boolean {
-  return !!getClientId();
+/** React hook: the current Google OAuth client ID, updated as soon as it is saved. */
+export function useClientId(): string {
+  return useSyncExternalStore(subscribeClientId, getClientId, getClientId);
 }

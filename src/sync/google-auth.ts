@@ -47,6 +47,14 @@ export function getClientId(): string {
   return (stored || (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) || '').trim();
 }
 
+const clientIdListeners = new Set<() => void>();
+
+/** Subscribe to client ID changes (so screens can enable "Connect" right after saving). */
+export function subscribeClientId(fn: () => void): () => void {
+  clientIdListeners.add(fn);
+  return () => clientIdListeners.delete(fn);
+}
+
 export function setClientId(id: string): void {
   try {
     if (id.trim()) localStorage.setItem(CLIENT_ID_KEY, id.trim());
@@ -54,6 +62,7 @@ export function setClientId(id: string): void {
   } catch {
     /* storage unavailable */
   }
+  for (const fn of clientIdListeners) fn();
 }
 
 export function isValidClientId(id: string): boolean {

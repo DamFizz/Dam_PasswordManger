@@ -26,6 +26,7 @@ import {
   downloadCloudVault,
   replaceCloudWithLocal,
   syncNow,
+  useClientId,
   useSync,
 } from '../../state/sync-controller';
 import { confirmDialog, toastError } from '../../state/ui';
@@ -106,7 +107,7 @@ export function SyncView() {
   const [records, setRecords] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [popupFailed, setPopupFailed] = useState(false);
-  const clientId = getClientId();
+  const clientId = useClientId();
 
   useEffect(() => {
     void getRepo()
