@@ -11,6 +11,7 @@ import { cx } from '../cx';
 import { CollectionIcon } from '../icons';
 import { descendantSectionIds, matchesFilter } from '../filtering';
 import { SyncPill } from './SyncPill';
+import { LiquidPill } from '../liquid';
 
 export const DRAG_MIME = 'application/x-myvault-items';
 
@@ -74,10 +75,11 @@ function NavItem({ icon, label, route, count, collapsed, onNavigate, dropTarget,
         }}
         title={collapsed ? label : undefined}
         aria-current={active ? 'page' : undefined}
+        data-liquid-active={active ? 'nav' : undefined}
         className={cx(
           'flex w-full items-center gap-2.5 rounded-full text-[14px] transition-colors duration-200 cursor-pointer',
           collapsed ? 'h-10 justify-center' : 'h-9 px-3',
-          active ? 'bg-[var(--seg-thumb)] text-fg font-semibold shadow-[inset_0_1px_0_var(--glass-sheen)] [&_svg]:text-accent' : 'text-fg/85 hover:bg-surface-2 hover:text-fg',
+          active ? 'text-fg font-semibold [&_svg]:text-accent' : 'text-fg/85 hover:bg-surface-2 hover:text-fg',
           over && 'bg-accent-soft text-fg outline outline-1 outline-accent',
         )}
         style={!collapsed && depth ? { paddingLeft: `${8 + depth * 16}px` } : undefined}
@@ -208,7 +210,8 @@ export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'deskto
         )}
       </div>
 
-      <div className={cx('min-h-0 flex-1 overflow-y-auto pb-4', collapsed ? 'px-2' : 'px-3')}>
+      <div className={cx('relative min-h-0 flex-1 overflow-y-auto pb-4', collapsed ? 'px-2' : 'px-3')}>
+        <LiquidPill group="nav" />
         <div className="space-y-px">
           {nav({ icon: <KeyRound />, label: t('nav.all'), route: { name: 'items', filter: { kind: 'all' } }, count: counts.all, dropTarget: { sectionId: null } })}
           {nav({ icon: <Star />, label: t('nav.favorites'), route: { name: 'items', filter: { kind: 'favorites' } }, count: counts.favorites })}
@@ -270,7 +273,8 @@ export function Sidebar({ variant = 'desktop', onNavigate }: { variant?: 'deskto
         </div>
       </div>
 
-      <div className={cx('shrink-0 space-y-px py-2', collapsed ? 'px-2' : 'px-3')}>
+      <div className={cx('relative shrink-0 space-y-px py-2', collapsed ? 'px-2' : 'px-3')}>
+        <LiquidPill group="nav" />
         {nav({ icon: <WandSparkles />, label: t('nav.generatorShort'), route: { name: 'generator' } })}
         {nav({ icon: <ShieldCheck />, label: t('nav.securityShort'), route: { name: 'security' } })}
         {nav({ icon: <Settings />, label: t('nav.settings'), route: { name: 'settings' } })}

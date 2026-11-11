@@ -1,5 +1,6 @@
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cx } from '../cx';
+import { LiquidPill } from '../liquid';
 
 export const inputClass =
   'w-full min-w-0 bg-[var(--field)] border border-[var(--border)] rounded-[16px] px-4 h-12 text-[16px] text-fg placeholder:text-faint shadow-[inset_0_1px_2px_rgb(0_0_0/0.12)] transition-[border-color,box-shadow] duration-200 focus:border-accent focus:shadow-[0_0_0_4px_var(--accent-soft)] disabled:opacity-60';
@@ -195,18 +196,20 @@ export function Segmented<T extends string>({
   block?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cx(block ? 'flex w-full [&>button]:flex-1' : 'inline-flex', 'rounded-full bg-[var(--seg-track)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.15)]')}>
+    <div role="radiogroup" aria-label={label} className={cx(block ? 'flex w-full [&>button]:flex-1' : 'inline-flex', 'relative rounded-full bg-[var(--seg-track)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.15)]')}>
+      <LiquidPill group="seg" className="lg-pill-thumb" />
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           role="radio"
           aria-checked={value === o.value}
+          data-liquid-active={value === o.value ? 'seg' : undefined}
           onClick={() => onChange(o.value)}
           className={cx(
-            'inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-[background-color,box-shadow,color] duration-300 cursor-pointer',
+            'relative inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors duration-300 cursor-pointer',
             size === 'sm' ? 'px-3.5 h-8 text-[13px]' : 'px-4 h-9 text-sm',
-            value === o.value ? 'bg-[var(--seg-thumb)] text-fg shadow-[inset_0_1px_0_var(--glass-sheen),0_3px_10px_rgb(0_0_0/0.18)]' : 'text-fg/75 hover:text-fg',
+            value === o.value ? 'text-fg' : 'text-fg/75 hover:text-fg',
           )}
         >
           {o.icon}

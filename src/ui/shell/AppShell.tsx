@@ -13,6 +13,7 @@ import { SettingsView } from '../views/SettingsView';
 import { BackupView } from '../views/BackupView';
 import { OrganizeView } from '../views/OrganizeView';
 import { Sidebar } from './Sidebar';
+import { LiquidPill, useRefraction } from '../liquid';
 
 /** Pages reached from Settings show a "back to Settings" link. */
 const SETTINGS_CHILDREN = new Set<Route['name']>(['sync', 'backup', 'organize']);
@@ -46,6 +47,8 @@ export function AppShell() {
   const route = useApp((s) => s.route);
   const search = useApp((s) => s.search);
   const editor = useApp((s) => s.editor);
+  const refract = useRefraction<HTMLElement>({ blur: 16 });
+  const refractBar = useRefraction<HTMLElement>({ blur: 20, saturate: 190, band: 18, strength: 34 });
   // Keep the editor mounted briefly after it closes so its sheet can slide away.
   const [editorView, setEditorView] = useState<{ editor: NonNullable<typeof editor>; key: number } | null>(null);
   useEffect(() => {
@@ -138,7 +141,7 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Desktop: floating glass search capsule */}
         <header className="hidden shrink-0 items-center gap-3 pb-3 md:flex">
-          <div className="glass-clear relative h-11 w-full max-w-md rounded-full">
+          <div ref={refract} className="glass-clear relative h-11 w-full max-w-md rounded-full">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
             <input
               ref={searchRef}
@@ -153,7 +156,7 @@ export function AppShell() {
             />
             <kbd className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 text-[11px] text-faint lg:inline">Ctrl K</kbd>
           </div>
-          <button type="button" aria-label={t('shortcuts.title')} title={t('shortcuts.title')} onClick={() => setHelp(true)} className="glass-clear pressable ml-auto hidden size-11 items-center justify-center rounded-full text-[15px] font-semibold text-fg lg:flex cursor-pointer">
+          <button ref={refract} type="button" aria-label={t('shortcuts.title')} title={t('shortcuts.title')} onClick={() => setHelp(true)} className="glass-clear pressable ml-auto hidden size-11 items-center justify-center rounded-full text-[15px] font-semibold text-fg lg:flex cursor-pointer">
             ?
           </button>
         </header>
@@ -163,7 +166,7 @@ export function AppShell() {
           <div className="flex h-16 items-center gap-2 px-4">
             {mobileSearch ? (
               <>
-                <div className="glass-clear relative h-12 flex-1 rounded-full">
+                <div ref={refract} className="glass-clear relative h-12 flex-1 rounded-full">
                   <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
                   <input
                     ref={mobileSearchRef}
@@ -196,7 +199,7 @@ export function AppShell() {
                 <span className="min-w-0 flex-1" aria-hidden>
                   <span className="sr-only">{title}</span>
                 </span>
-                <div className="glass-clear flex h-12 items-center rounded-full px-1">
+                <div ref={refract} className="glass-clear flex h-12 items-center rounded-full px-1">
                   <button type="button" aria-label={t('search.label')} title={t('search.label')} onClick={focusSearch} className="pressable flex size-10 items-center justify-center rounded-full text-fg cursor-pointer">
                     <Search className="size-5" />
                   </button>
@@ -213,7 +216,7 @@ export function AppShell() {
           {SETTINGS_CHILDREN.has(route.name) ? (
             <div className="flex h-full flex-col">
               <div className="shrink-0 px-4 pt-2 sm:px-6">
-                <button type="button" onClick={() => navigate({ name: 'settings' })} className="glass-clear pressable inline-flex h-10 items-center gap-0.5 rounded-full pl-2 pr-4 text-[15px] font-medium text-fg cursor-pointer">
+                <button ref={refract} type="button" onClick={() => navigate({ name: 'settings' })} className="glass-clear pressable inline-flex h-10 items-center gap-0.5 rounded-full pl-2 pr-4 text-[15px] font-medium text-fg cursor-pointer">
                   <ChevronLeft className="size-5" />
                   {t('nav.settings')}
                 </button>
@@ -231,14 +234,15 @@ export function AppShell() {
 
         {/* Phone: floating glass tab bar + add button */}
         <div className="pointer-events-none fixed inset-x-0 z-30 flex items-end gap-2.5 px-4 md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
-          <nav aria-label={t('nav.main')} className="glass-strong pointer-events-auto grid h-[64px] flex-1 grid-cols-4 rounded-full p-1">
+          <nav ref={refractBar} aria-label={t('nav.main')} className="glass-strong lg-tabbar pointer-events-auto grid h-[64px] flex-1 grid-cols-4 rounded-full p-1">
+            <LiquidPill group="tab" />
             <BottomTab icon={<KeyRound className="size-[22px]" />} label={t('nav.vault')} active={tab === 'vault'} onClick={() => navigate(HOME)} />
             <BottomTab icon={<WandSparkles className="size-[22px]" />} label={t('nav.generatorShort')} active={tab === 'generator'} onClick={() => navigate({ name: 'generator' })} />
             <BottomTab icon={<ShieldCheck className="size-[22px]" />} label={t('nav.securityShort')} active={tab === 'security'} onClick={() => navigate({ name: 'security' })} />
             <BottomTab icon={<Settings className="size-[22px]" />} label={t('nav.settings')} active={tab === 'settings'} onClick={() => navigate({ name: 'settings' })} />
           </nav>
           {tab === 'vault' && (
-            <button type="button" onClick={() => openEditor({ mode: 'new', type: 'login' })} aria-label={t('item.new')} className="glass-tint pressable pointer-events-auto flex size-[64px] shrink-0 items-center justify-center rounded-full cursor-pointer">
+            <button ref={refract} type="button" onClick={() => openEditor({ mode: 'new', type: 'login' })} aria-label={t('item.new')} className="glass-tint pressable pointer-events-auto flex size-[64px] shrink-0 items-center justify-center rounded-full cursor-pointer">
               <Plus className="size-7" />
             </button>
           )}
@@ -259,8 +263,9 @@ export function AppShell() {
 }
 
 function GlassButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  const refract = useRefraction<HTMLButtonElement>({ blur: 16 });
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className="glass-clear pressable flex size-12 shrink-0 items-center justify-center rounded-full text-fg cursor-pointer">
+    <button ref={refract} type="button" aria-label={label} title={label} onClick={onClick} className="glass-clear pressable flex size-12 shrink-0 items-center justify-center rounded-full text-fg cursor-pointer">
       {children}
     </button>
   );
@@ -272,9 +277,10 @@ function BottomTab({ icon, label, active, onClick }: { icon: ReactNode; label: s
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
+      data-liquid-active={active ? 'tab' : undefined}
       className={cx(
-        'pressable flex flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold transition-colors duration-300 cursor-pointer',
-        active ? 'bg-[var(--seg-thumb)] text-accent shadow-[inset_0_1px_0_var(--glass-sheen)]' : 'text-fg/75',
+        'lg-tab relative flex flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold transition-colors duration-300 cursor-pointer',
+        active ? 'text-accent' : 'text-fg/75',
       )}
     >
       {icon}
