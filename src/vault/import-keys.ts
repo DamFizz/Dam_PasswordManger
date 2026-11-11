@@ -1,7 +1,8 @@
 import { DecryptionError, openJson } from '../lib/crypto';
 import { wipe } from '../lib/encoding';
 import { WrongPasswordError } from './access';
-import { aad, deriveVaultKeys, passwordKek, unwrapVaultKey } from './keys';
+import { aad, deriveVaultKeys, importSecretKey, parseSecretKey, passwordKek, passwordSecretKek, secretKeyId, unwrapVaultKey } from './keys';
+import { SecretKeyRequiredError, WrongSecretKeyError } from './secret-key';
 import type { EncryptedRecord, RecordPayload, VaultHeader } from './types';
 
 /**
@@ -12,12 +13,22 @@ import type { EncryptedRecord, RecordPayload, VaultHeader } from './types';
 export async function unwrapWithPasswordForImport(
   vault: { header: VaultHeader; records: EncryptedRecord[] },
   password: string,
+  /** needed when the backed-up vault uses a Secret Key (format v2) */
+  secretKey?: string,
 ): Promise<RecordPayload[]> {
   const { header } = vault;
-  const kek = await passwordKek(password, header.kdf, header.vaultId);
+  let kek: CryptoKey;
+  if (header.secretKey) {
+    if (!secretKey) throw new SecretKeyRequiredError(header.vaultId);
+    const { raw } = await parseSecretKey(secretKey);
+    if ((await secretKeyId(raw, header.vaultId)) !== header.secretKey.id) throw new WrongSecretKeyError();
+    kek = await passwordSecretKek(password, header.kdf, header.vaultId, await importSecretKey(raw));
+  } else {
+    kek = await passwordKek(password, header.kdf, header.vaultId);
+  }
   let vk: Uint8Array<ArrayBuffer>;
   try {
-    vk = await unwrapVaultKey(kek, header.passwordWrap, header.vaultId, 'password');
+    vk = await unwrapVaultKey(kek, header.passwordWrap, header.vaultId, header.secretKey ? 'password-sk' : 'password');
   } catch (e) {
     if (e instanceof DecryptionError) throw new WrongPasswordError('Incorrect master password for this backup');
     throw e;

@@ -353,7 +353,11 @@ export class SyncEngine {
       message: 'Security settings (master password, Authenticator or recovery options) were changed on two devices. The most recent change was kept — please review Settings → Security.',
     });
     const minRev = Math.max(local.rev, remote.rev) + 1;
-    if (remote.updatedAt > local.updatedAt) {
+    // Never drop the Secret Key silently: if only one side has it, that side wins regardless of time.
+    const remoteHasSk = !!remote.secretKey;
+    const localHasSk = !!local.secretKey;
+    const preferRemote = remoteHasSk !== localHasSk ? remoteHasSk : remote.updatedAt > local.updatedAt;
+    if (preferRemote) {
       return { adopt: { header: remote, security }, pushLocal: true, bumpLocal: minRev };
     }
     return { pushLocal: true, bumpLocal: minRev };

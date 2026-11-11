@@ -1,5 +1,5 @@
 import { isSealed } from '../lib/crypto';
-import { VAULT_FORMAT, type EncryptedRecord, type VaultHeader } from '../vault/types';
+import { VAULT_FORMAT, VAULT_FORMAT_MAX_VERSION, type EncryptedRecord, type VaultHeader } from '../vault/types';
 
 export const SYNC_FORMAT = 'myvault-sync';
 export const SYNC_FORMAT_VERSION = 1;
@@ -30,13 +30,18 @@ export function validateHeader(h: unknown): asserts h is VaultHeader {
   const x = h as VaultHeader;
   if (!x || typeof x !== 'object') throw new InvalidVaultFileError('Missing vault header');
   if (x.format !== VAULT_FORMAT) throw new InvalidVaultFileError('Not a MyVault vault');
-  if (typeof x.version !== 'number' || x.version > 1) throw new InvalidVaultFileError(`Unsupported vault format version ${x.version}`);
+  if (typeof x.version !== 'number' || x.version > VAULT_FORMAT_MAX_VERSION) throw new InvalidVaultFileError(`Unsupported vault format version ${x.version}`);
   if (typeof x.vaultId !== 'string' || typeof x.vtag !== 'string' || typeof x.rev !== 'number') {
     throw new InvalidVaultFileError('Vault header is incomplete');
   }
   if (!x.kdf || x.kdf.alg !== 'argon2id' || typeof x.kdf.salt !== 'string') throw new InvalidVaultFileError('Unsupported key derivation');
   if (!isSealed(x.passwordWrap) || !isSealed(x.security)) throw new InvalidVaultFileError('Vault header is incomplete');
   if (x.recoveryWrap != null && !isSealed(x.recoveryWrap)) throw new InvalidVaultFileError('Vault header is corrupted');
+  if (x.secretKey != null) {
+    if (x.version < 2 || typeof x.secretKey !== 'object' || typeof x.secretKey.id !== 'string' || typeof x.secretKey.createdAt !== 'number') {
+      throw new InvalidVaultFileError('Vault header is corrupted');
+    }
+  }
 }
 
 export function validateRecords(records: unknown): asserts records is EncryptedRecord[] {

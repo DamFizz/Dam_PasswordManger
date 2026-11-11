@@ -1,7 +1,12 @@
 import type { KdfParams, Sealed } from '../lib/crypto';
 
 export const VAULT_FORMAT = 'myvault-vault';
+/** Version written by new vaults (password-only key wrap). */
 export const VAULT_FORMAT_VERSION = 1;
+/** Version written once a Secret Key has been enabled (header.secretKey). */
+export const VAULT_FORMAT_VERSION_SECRET_KEY = 2;
+/** Highest header version this app can read. Older apps refuse newer files instead of overwriting them. */
+export const VAULT_FORMAT_MAX_VERSION = 2;
 
 export type ItemType = 'login' | 'note' | 'wifi' | 'recoveryCodes' | 'license' | 'custom';
 
@@ -133,6 +138,17 @@ export interface VaultHeader {
   recoveryWrap?: WrappedKey | null;
   /** SecurityConfig encrypted with the vault's security subkey */
   security: Sealed;
+  /**
+   * Format v2: when set, `passwordWrap` is wrapped with a KEK that needs the master password AND
+   * the device-held Secret Key (see docs in src/vault/secret-key.ts). null = password only.
+   */
+  secretKey?: SecretKeyInfo | null;
+}
+
+export interface SecretKeyInfo {
+  /** HKDF-derived identifier of the Secret Key (lets the app say "wrong Secret Key") */
+  id: string;
+  createdAt: number;
 }
 
 export interface TotpSettings {
@@ -150,6 +166,8 @@ export interface SecurityConfig {
   recoveryCodesCreatedAt: number | null;
   recoveryKeyCreatedAt: number | null;
   passwordChangedAt: number;
+  /** Secret Key (26 base32 chars) kept inside the encrypted vault so unlocked devices can show it again */
+  secretKey?: string | null;
 }
 
 export function emptyItem(type: ItemType, id: string, now: number): VaultItem {

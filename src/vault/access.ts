@@ -25,18 +25,26 @@ import {
   generateRecoveryKey,
   generateVaultKey,
   hashRecoveryCode,
+  importSecretKey,
   parseRecoveryKey,
+  parseSecretKey,
   passwordKek,
+  passwordSecretKek,
   secretKek,
+  secretKeyFromStored,
+  secretKeyId,
+  secretKeyToStored,
   unwrapVaultKey,
   wrapVaultKey,
 } from './keys';
+import { forgetSecretKey, kekForHeader, RecoveryKeyRequiredError, rememberSecretKey, type SecretKeySource } from './secret-key';
 import { VaultSession } from './session';
 import { assertNotThrottled, recordFailure, recordSuccess } from './throttle';
 import {
   DEFAULT_VAULT_SETTINGS,
   VAULT_FORMAT,
   VAULT_FORMAT_VERSION,
+  VAULT_FORMAT_VERSION_SECRET_KEY,
   type SecurityConfig,
   type TotpSettings,
   type VaultHeader,
@@ -302,12 +310,21 @@ async function requireHeader(repo: VaultRepository): Promise<VaultHeader> {
   return header;
 }
 
-/** Unwrap the raw vault key with the master password. Caller owns (and must wipe) the result. */
-async function unwrapWithPassword(repo: VaultRepository, header: VaultHeader, password: string): Promise<Uint8Array<ArrayBuffer>> {
+/**
+ * Unwrap the raw vault key with the master password (and the Secret Key for format-v2 vaults).
+ * Caller owns (and must wipe) the result.
+ */
+async function unwrapWithPassword(
+  repo: VaultRepository,
+  header: VaultHeader,
+  password: string,
+  src: SecretKeySource = {},
+): Promise<Uint8Array<ArrayBuffer>> {
   await assertNotThrottled(repo);
-  const kek = await passwordKek(password, header.kdf, header.vaultId);
+  const { kek, purpose, supplied } = await kekForHeader(repo, header, password, src);
+  let vk: Uint8Array<ArrayBuffer>;
   try {
-    return await unwrapVaultKey(kek, header.passwordWrap, header.vaultId, 'password');
+    vk = await unwrapVaultKey(kek, header.passwordWrap, header.vaultId, purpose);
   } catch (e) {
     if (e instanceof DecryptionError) {
       await recordFailure(repo);
@@ -315,12 +332,36 @@ async function unwrapWithPassword(repo: VaultRepository, header: VaultHeader, pa
     }
     throw e;
   }
+  // A Secret Key typed by the user is kept only once the master password proved correct.
+  if (supplied && src.rememberSecretKey !== false) await rememberSecretKey(repo, header.vaultId, supplied);
+  return vk;
 }
 
-export async function unlockWithPassword(repo: VaultRepository, password: string): Promise<UnlockStep> {
+/**
+ * For a format-v2 vault the Secret Key comes from this device, or from `opts.secretKey`
+ * (typed / scanned). Throws SecretKeyRequiredError when neither is available.
+ */
+export async function unlockWithPassword(repo: VaultRepository, password: string, opts: SecretKeySource = {}): Promise<UnlockStep> {
   const header = await requireHeader(repo);
-  const vk = await unwrapWithPassword(repo, header, password);
+  const vk = await unwrapWithPassword(repo, header, password, opts);
   return continueUnlock(repo, vk, header);
+}
+
+/** New master-password wrap for `header`, keeping the vault's current mode (v1 or Secret Key). */
+async function passwordWrapFor(
+  header: VaultHeader,
+  security: SecurityConfig,
+  password: string,
+  vk: Uint8Array<ArrayBuffer>,
+  kdf = newKdfParams(),
+): Promise<{ kdf: VaultHeader['kdf']; passwordWrap: VaultHeader['passwordWrap'] }> {
+  if (!header.secretKey) {
+    const kek = await passwordKek(password, kdf, header.vaultId);
+    return { kdf, passwordWrap: await wrapVaultKey(kek, vk, header.vaultId, 'password') };
+  }
+  if (!security.secretKey) throw new Error('Vault is corrupted: the Secret Key copy is missing');
+  const kek = await passwordSecretKek(password, kdf, header.vaultId, await importSecretKey(secretKeyFromStored(security.secretKey)));
+  return { kdf, passwordWrap: await wrapVaultKey(kek, vk, header.vaultId, 'password-sk') };
 }
 
 /** Unlock with a vault key unwrapped by another primary method (e.g. device passkey). */
@@ -333,7 +374,12 @@ export async function unlockWithUnwrappedKey(repo: VaultRepository, vk: Uint8Arr
  * Forgotten master password: the emergency recovery key unwraps the vault key and a new
  * master password is set. A mandatory Authenticator is still enforced (TOTP or recovery code).
  */
-export async function unlockWithRecoveryKey(repo: VaultRepository, recoveryKey: string, newPassword: string): Promise<UnlockStep> {
+export async function unlockWithRecoveryKey(
+  repo: VaultRepository,
+  recoveryKey: string,
+  newPassword: string,
+  opts: { rememberSecretKey?: boolean } = {},
+): Promise<UnlockStep> {
   await assertNotThrottled(repo);
   const header = await requireHeader(repo);
   if (!header.recoveryWrap) throw new Error('No recovery key was set up for this vault');
@@ -355,15 +401,18 @@ export async function unlockWithRecoveryKey(repo: VaultRepository, recoveryKey: 
     wipe(raw);
   }
   return continueUnlock(repo, vk, header, async (key, h) => {
-    const kdf = newKdfParams();
-    const kek = await passwordKek(newPassword, kdf, h.vaultId);
     const keys = await deriveVaultKeys(key, h.vaultId);
     const sec = await openJson<SecurityConfig>(keys.security, h.security, aad.security(h.vaultId, h.rev, h.vtag));
     sec.passwordChangedAt = Date.now();
+    // Secret Key vaults: the key is recovered from inside the vault and kept on this device.
+    const { kdf, passwordWrap } = await passwordWrapFor(h, sec, newPassword, key);
+    if (h.secretKey && sec.secretKey && opts.rememberSecretKey !== false) {
+      await rememberSecretKey(repo, h.vaultId, secretKeyFromStored(sec.secretKey));
+    }
     const next: VaultHeader = {
       ...h,
       kdf,
-      passwordWrap: await wrapVaultKey(kek, key, h.vaultId, 'password'),
+      passwordWrap,
       rev: h.rev + 1,
       vtag: randomId(),
       updatedAt: Date.now(),
@@ -385,7 +434,7 @@ export async function withMasterPassword<T>(
   password: string,
   fn: (vk: Uint8Array<ArrayBuffer>) => Promise<T>,
 ): Promise<T> {
-  const vk = await unwrapWithPassword(session.repo, session.header, password);
+  const vk = await unwrapWithPassword(session.repo, session.header, password, { stored: session.security.secretKey ?? null });
   try {
     await recordSuccess(session.repo);
     return await fn(vk);
@@ -428,9 +477,7 @@ export async function verifySecondFactor(session: VaultSession, code: string): P
 
 export async function changeMasterPassword(session: VaultSession, currentPassword: string, newPassword: string): Promise<void> {
   await withMasterPassword(session, currentPassword, async (vk) => {
-    const kdf = newKdfParams();
-    const kek = await passwordKek(newPassword, kdf, session.vaultId);
-    const passwordWrap = await wrapVaultKey(kek, vk, session.vaultId, 'password');
+    const { kdf, passwordWrap } = await passwordWrapFor(session.header, session.security, newPassword, vk);
     await session.commitHeader((h, sec) => {
       h.kdf = kdf;
       h.passwordWrap = passwordWrap;
@@ -496,4 +543,57 @@ export async function removeRecoveryKey(session: VaultSession): Promise<void> {
     h.recoveryWrap = null;
     sec.recoveryKeyCreatedAt = null;
   });
+}
+
+// ----------------------------------------------------------------------------- Secret Key (format v2)
+
+/**
+ * Turn on (or rotate) the Secret Key. `secretKey` is the display form the user has just saved in
+ * their Emergency Kit (see generateSecretKey). Requires the master password and an existing
+ * recovery key; the UI must also verify the second factor (verifySecondFactor) first.
+ * Other devices keep their open session and ask for the Secret Key at their next unlock.
+ */
+export async function enableSecretKey(
+  session: VaultSession,
+  password: string,
+  secretKey: string,
+  opts: { rememberOnDevice?: boolean } = {},
+): Promise<void> {
+  if (!session.header.recoveryWrap) throw new RecoveryKeyRequiredError();
+  const { raw } = await parseSecretKey(secretKey);
+  await withMasterPassword(session, password, async (vk) => {
+    const kek = await passwordSecretKek(password, session.header.kdf, session.vaultId, await importSecretKey(raw));
+    const passwordWrap = await wrapVaultKey(kek, vk, session.vaultId, 'password-sk');
+    const id = await secretKeyId(raw, session.vaultId);
+    await session.commitHeader((h, sec) => {
+      h.version = Math.max(h.version, VAULT_FORMAT_VERSION_SECRET_KEY);
+      h.passwordWrap = passwordWrap;
+      h.secretKey = { id, createdAt: Date.now() };
+      sec.secretKey = secretKeyToStored(raw);
+    });
+  });
+  if (opts.rememberOnDevice === false) await forgetSecretKey(session.repo, session.vaultId);
+  else await rememberSecretKey(session.repo, session.vaultId, raw);
+}
+
+/** Go back to master-password-only protection of the cloud copy (the header stays version 2). */
+export async function disableSecretKey(session: VaultSession, password: string): Promise<void> {
+  await withMasterPassword(session, password, async (vk) => {
+    const kek = await passwordKek(password, session.header.kdf, session.vaultId);
+    const passwordWrap = await wrapVaultKey(kek, vk, session.vaultId, 'password');
+    await session.commitHeader((h, sec) => {
+      h.passwordWrap = passwordWrap;
+      h.secretKey = null;
+      sec.secretKey = null;
+    });
+  });
+  await forgetSecretKey(session.repo, session.vaultId);
+}
+
+/**
+ * The Secret Key of an unlocked vault, for "Add a device" (QR) or a new Emergency Kit.
+ * The UI must re-verify the master password and second factor before calling this.
+ */
+export function currentSecretKey(session: VaultSession): Uint8Array<ArrayBuffer> | null {
+  return session.header.secretKey && session.security.secretKey ? secretKeyFromStored(session.security.secretKey) : null;
 }

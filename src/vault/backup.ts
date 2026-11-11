@@ -164,8 +164,14 @@ export interface MergeImportResult {
  * records. Items that do not exist are added; identical ones are skipped; differing versions
  * are added as "(restored copy)" so nothing is overwritten.
  */
-export async function restoreMerge(session: VaultSession, backup: OpenedBackup, backupMasterPassword: string): Promise<MergeImportResult> {
-  const payloads = await unwrapWithPasswordForImport(backup, backupMasterPassword);
+export async function restoreMerge(
+  session: VaultSession,
+  backup: OpenedBackup,
+  backupMasterPassword: string,
+  /** the backup vault's Secret Key, when it had one */
+  backupSecretKey?: string,
+): Promise<MergeImportResult> {
+  const payloads = await unwrapWithPasswordForImport(backup, backupMasterPassword, backupSecretKey);
   const existingItems = new Map(session.items().map((i) => [i.id, i]));
   const existingCollections = new Map(session.collections().map((c) => [c.id, c]));
   const existingCollectionNames = new Map(session.collections().map((c) => [`${c.kind}:${c.name.toLowerCase()}`, c.id]));
