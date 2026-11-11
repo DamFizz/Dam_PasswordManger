@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cx } from '../cx';
 import { IconButton } from './Button';
+import { aimPopupAtPress } from '../liquid';
 import { useT } from '../../i18n';
 
 /**
@@ -51,7 +52,15 @@ export function Modal({
     if (open) {
       setMounted(true);
       delete d.dataset.closing;
-      if (!d.open) d.showModal();
+      if (!d.open) {
+        d.showModal();
+        const panel = d.querySelector<HTMLElement>('.mv-dialog-panel');
+        if (panel) {
+          panel.removeAttribute('data-from-press');
+          const slides = placement === 'left' || (sheet && window.matchMedia('(max-width: 639px)').matches);
+          if (!slides) aimPopupAtPress(panel);
+        }
+      }
       return;
     }
     if (!d.open) {

@@ -86,6 +86,29 @@ function stretched(a: Box, b: Box): Box {
  * The parent must be positioned (relative/absolute) and the items positioned too, so they
  * paint above the drop. Render it as the parent's first child.
  */
+/*
+ * All pills are placed in one batch per frame: every pill reads layout first, then every pill
+ * writes. Interleaving reads and writes would force a full re-layout per pill (layout thrash).
+ */
+interface PillJob {
+  measure(): void;
+  apply(): void;
+}
+const pillQueue = new Set<PillJob>();
+let pillFlushQueued = false;
+function schedulePill(job: PillJob) {
+  pillQueue.add(job);
+  if (pillFlushQueued) return;
+  pillFlushQueued = true;
+  queueMicrotask(() => {
+    pillFlushQueued = false;
+    const jobs = [...pillQueue];
+    pillQueue.clear();
+    for (const j of jobs) j.measure();
+    for (const j of jobs) j.apply();
+  });
+}
+
 export function LiquidPill({ group, className }: { group: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -95,6 +118,8 @@ export function LiquidPill({ group, className }: { group: string; className?: st
     if (!pill || !host) return;
     let prev: Box | null = null;
     let anim: Animation | null = null;
+    let wantAnimate = false;
+    let measured: { next: Box | null; from: Box | null } | null = null;
 
     const current = (): Box | null => {
       if (!anim) return prev;
@@ -103,56 +128,69 @@ export function LiquidPill({ group, className }: { group: string; className?: st
       return { x: m.m41, y: m.m42, w: parseFloat(cs.width), h: parseFloat(cs.height) };
     };
 
-    const place = (animate: boolean) => {
-      const target = host.querySelector<HTMLElement>(`[data-liquid-active="${group}"]`);
-      const next = target ? offsetWithin(target, host) : null;
-      if (!next) {
-        if (prev) {
-          anim?.cancel();
-          anim = null;
-          pill.style.opacity = '0';
-          if (animate && !reducedMotion()) pill.animate([{ opacity: 1, scale: '1' }, { opacity: 0, scale: '0.6' }], { duration: 220, easing: 'ease-in' });
-          prev = null;
+    const job: PillJob = {
+      measure() {
+        const target = host.querySelector<HTMLElement>(`[data-liquid-active="${group}"]`);
+        measured = { next: target ? offsetWithin(target, host) : null, from: current() };
+      },
+      apply() {
+        if (!measured) return;
+        const { next, from } = measured;
+        const animate = wantAnimate && !reducedMotion();
+        measured = null;
+        wantAnimate = false;
+        if (!next) {
+          if (prev) {
+            anim?.cancel();
+            anim = null;
+            pill.style.opacity = '0';
+            if (animate) pill.animate([{ opacity: 1, scale: '1' }, { opacity: 0, scale: '0.6' }], { duration: 220, easing: 'ease-in' });
+            prev = null;
+          }
+          return;
         }
-        return;
-      }
-      const from = current();
-      if (from && Math.abs(from.x - next.x) < 0.5 && Math.abs(from.y - next.y) < 0.5 && Math.abs(from.w - next.w) < 0.5 && Math.abs(from.h - next.h) < 0.5) return;
-      anim?.cancel();
-      anim = null;
-      pill.style.transform = `translate(${next.x}px, ${next.y}px)`;
-      pill.style.width = `${next.w}px`;
-      pill.style.height = `${next.h}px`;
-      pill.style.opacity = '1';
-      prev = next;
-      if (!animate || reducedMotion()) return;
-      if (!from) {
-        anim = pill.animate([frame(next, { opacity: 0, scale: '0.55' }), frame(next, { opacity: 1, scale: '1' })], { duration: 520, easing: JELLY });
-      } else {
-        const dist = Math.hypot(next.x - from.x, next.y - from.y);
-        anim = pill.animate(
-          [
-            { ...frame(from), easing: 'cubic-bezier(0.3, 0, 0.6, 1)' },
-            { ...frame(stretched(from, next)), offset: 0.34, easing: JELLY },
-            frame(next),
-          ],
-          { duration: Math.min(820, 520 + dist * 0.45) },
-        );
-      }
-      anim.onfinish = () => {
+        if (from && Math.abs(from.x - next.x) < 0.5 && Math.abs(from.y - next.y) < 0.5 && Math.abs(from.w - next.w) < 0.5 && Math.abs(from.h - next.h) < 0.5) return;
+        anim?.cancel();
         anim = null;
-      };
+        pill.style.transform = `translate(${next.x}px, ${next.y}px)`;
+        pill.style.width = `${next.w}px`;
+        pill.style.height = `${next.h}px`;
+        pill.style.opacity = '1';
+        prev = next;
+        if (!animate) return;
+        if (!from) {
+          anim = pill.animate([frame(next, { opacity: 0, scale: '0.55' }), frame(next, { opacity: 1, scale: '1' })], { duration: 520, easing: JELLY });
+        } else {
+          const dist = Math.hypot(next.x - from.x, next.y - from.y);
+          anim = pill.animate(
+            [
+              { ...frame(from), easing: 'cubic-bezier(0.3, 0, 0.6, 1)' },
+              { ...frame(stretched(from, next)), offset: 0.34, easing: JELLY },
+              frame(next),
+            ],
+            { duration: Math.min(820, 520 + dist * 0.45) },
+          );
+        }
+        anim.onfinish = () => {
+          anim = null;
+        };
+      },
+    };
+    const place = (animate: boolean) => {
+      wantAnimate ||= animate;
+      schedulePill(job);
     };
 
     place(false);
-    // On resize: snap at rest, but re-aim smoothly if the drop is mid-flight
     const mo = new MutationObserver(() => place(true));
     mo.observe(host, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-liquid-active'] });
+    // On resize: snap at rest, but re-aim smoothly if the drop is mid-flight
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => place(anim !== null)) : null;
     ro?.observe(host);
     return () => {
       mo.disconnect();
       ro?.disconnect();
+      pillQueue.delete(job);
       anim?.cancel();
     };
   }, [group]);
@@ -162,7 +200,9 @@ export function LiquidPill({ group, className }: { group: string; className?: st
 
 // ----------------------------------------------------------------------------- light
 
-const LIGHT_SELECTOR = '.glass, .glass-strong, .glass-clear, .glass-tint, .card, .lg-panel';
+const LIGHT_SELECTOR = '.glass, .glass-strong, .glass-clear, .glass-tint';
+/** Lighting a big blurred panel repaints the whole panel on every move; keep it to controls. */
+const MAX_LIT_AREA = 70_000;
 let lightInstalled = false;
 
 /** Specular light that follows the pointer over glass. Call once at startup. */
@@ -177,7 +217,7 @@ export function installLiquidLight(): void {
     const out: HTMLElement[] = [];
     let el = target instanceof Element ? target.closest<HTMLElement>(LIGHT_SELECTOR) : null;
     while (el && out.length < 2) {
-      out.push(el);
+      if (el.offsetWidth * el.offsetHeight <= MAX_LIT_AREA) out.push(el);
       el = el.parentElement?.closest<HTMLElement>(LIGHT_SELECTOR) ?? null;
     }
     return out;
@@ -221,6 +261,132 @@ export function installLiquidLight(): void {
   window.addEventListener('blur', clear);
 }
 
+// ----------------------------------------------------------------------------- press
+
+const PRESS_SELECTOR = 'button, [role="button"], [role="menuitem"], [role="tab"], a[href], summary';
+/** Where and when the last press happened, so popups can grow out of the control you tapped. */
+let lastPress: { x: number; y: number; t: number } | null = null;
+let pressInstalled = false;
+
+/** The point (viewport px) of a press in the last `withinMs`, if any. */
+export function recentPressPoint(withinMs = 700): { x: number; y: number } | null {
+  return lastPress && performance.now() - lastPress.t < withinMs ? lastPress : null;
+}
+
+/**
+ * Marks the control under a press with `data-pressed` for at least ~140 ms, so even a quick tap
+ * shows the squish (CSS :active alone flickers for a few ms on touch screens).
+ */
+export function installLiquidPress(): void {
+  if (pressInstalled || typeof document === 'undefined') return;
+  pressInstalled = true;
+  const MIN_MS = 140;
+  let el: HTMLElement | null = null;
+  let since = 0;
+  let start: { x: number; y: number } | null = null;
+  let timer = 0;
+
+  const settleTimers = new WeakMap<HTMLElement, number>();
+  const settle = (target: HTMLElement) => {
+    target.removeAttribute('data-pressed');
+    target.setAttribute('data-released', '');
+    window.clearTimeout(settleTimers.get(target));
+    settleTimers.set(target, window.setTimeout(() => target.removeAttribute('data-released'), 640));
+  };
+  const release = (now = false) => {
+    const target = el;
+    if (!target) return;
+    el = null;
+    start = null;
+    const wait = now ? 0 : Math.max(0, MIN_MS - (performance.now() - since));
+    window.clearTimeout(timer);
+    if (wait === 0) settle(target);
+    else timer = window.setTimeout(() => settle(target), wait);
+  };
+  const press = (target: HTMLElement) => {
+    window.clearTimeout(settleTimers.get(target));
+    target.removeAttribute('data-released');
+    target.setAttribute('data-pressed', '');
+  };
+
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (e.button !== 0) return;
+      lastPress = { x: e.clientX, y: e.clientY, t: performance.now() };
+      const hit = e.target instanceof Element ? e.target.closest<HTMLElement>(PRESS_SELECTOR) : null;
+      if (!hit || hit.matches(':disabled, [aria-disabled="true"]')) return;
+      if (el && el !== hit) release(true);
+      window.clearTimeout(timer);
+      el = hit;
+      since = performance.now();
+      start = { x: e.clientX, y: e.clientY };
+      press(hit);
+    },
+    { passive: true, capture: true },
+  );
+  document.addEventListener(
+    'pointermove',
+    (e) => {
+      // A drag or scroll is not a press
+      if (el && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) release(true);
+    },
+    { passive: true },
+  );
+  document.addEventListener('pointerup', () => release(), { passive: true });
+  document.addEventListener('pointercancel', () => release(true), { passive: true });
+  document.addEventListener('dragstart', () => release(true), { passive: true });
+  // Keyboard presses get the same feedback
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !e.repeat && document.activeElement instanceof HTMLElement && document.activeElement.matches(PRESS_SELECTOR)) {
+      el = document.activeElement;
+      since = performance.now();
+      press(el);
+      if (e.key === 'Enter') release();
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === ' ') release();
+  });
+  window.addEventListener('blur', () => release(true));
+}
+
+/**
+ * Point the opening animation of `panel` at the last press, so the popup grows out of the
+ * control that opened it. Uses layout offsets (unaffected by the running animation).
+ */
+export function aimPopupAtPress(panel: HTMLElement): boolean {
+  const p = recentPressPoint();
+  if (!p || reducedMotion()) return false;
+  let x = 0;
+  let y = 0;
+  let n: HTMLElement | null = panel;
+  while (n) {
+    x += n.offsetLeft;
+    y += n.offsetTop;
+    const parent = n.offsetParent as HTMLElement | null;
+    if (!parent) {
+      // reached a fixed-position ancestor (the dialog): add its viewport position
+      if (getComputedStyle(n).position === 'fixed') {
+        const r = n.getBoundingClientRect();
+        x += r.left - n.offsetLeft;
+        y += r.top - n.offsetTop;
+      }
+      break;
+    }
+    n = parent;
+  }
+  const w = panel.offsetWidth;
+  const h = panel.offsetHeight;
+  if (!w || !h) return false;
+  const ox = Math.min(Math.max(p.x - x, -w * 0.25), w * 1.25);
+  const oy = Math.min(Math.max(p.y - y, -h * 0.25), h * 1.25);
+  panel.style.setProperty('--origin-x', `${Math.round(ox)}px`);
+  panel.style.setProperty('--origin-y', `${Math.round(oy)}px`);
+  panel.setAttribute('data-from-press', '');
+  return true;
+}
+
 // ----------------------------------------------------------------------------- refraction
 
 let refractSvg: SVGSVGElement | null = null;
@@ -230,11 +396,26 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 function refractionSupported(): boolean {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return false;
   const ua = navigator.userAgent;
-  return /Chrome\/\d+/.test(ua) && !/Firefox|FxiOS|CriOS/.test(ua) && !!CSS.supports?.('backdrop-filter', 'url(#x)');
+  if (!/Chrome\/\d+/.test(ua) || /Firefox|FxiOS|CriOS/.test(ua) || !CSS.supports?.('backdrop-filter', 'url(#x)')) return false;
+  // The lens is an extra GPU pass per frame; skip it on low-end devices and in data-saver mode.
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if ((navigator.hardwareConcurrency || 8) < 6 || (nav.deviceMemory ?? 8) < 4 || nav.connection?.saveData) return false;
+  return true;
 }
+
+const mapCache = new Map<string, string>();
 
 /** Displacement map for a rounded rectangle: pixels near the rim sample the backdrop further inside. */
 function displacementMap(w: number, h: number, radius: number, band: number): string {
+  const key = `${w}x${h}r${radius}b${band}`;
+  const hit = mapCache.get(key);
+  if (hit) return hit;
+  const url = drawDisplacementMap(w, h, radius, band);
+  if (url) mapCache.set(key, url);
+  return url;
+}
+
+function drawDisplacementMap(w: number, h: number, radius: number, band: number): string {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;

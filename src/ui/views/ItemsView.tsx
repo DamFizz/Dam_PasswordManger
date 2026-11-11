@@ -407,7 +407,7 @@ function ItemRow({ item, category, selected, checked, selecting, onToggle }: Row
       <div
         draggable={!item.trashedAt}
         onDragStart={(e) => dragStart(e, item)}
-        className={cx('group relative flex items-center gap-3 rounded-[14px] px-2.5 py-2 transition-colors duration-200', selected ? 'bg-accent text-on-accent [&_.text-muted]:text-on-accent/75 [&_.text-fg]:text-on-accent [&_button]:text-on-accent' : checked ? 'bg-surface-2' : 'hover:bg-surface-2 active:bg-surface-3')}
+        className={cx('lg-row-host group relative flex items-center gap-3 rounded-[14px] px-2.5 py-2 transition-colors duration-200', selected ? 'bg-accent text-on-accent [&_.text-muted]:text-on-accent/75 [&_.text-fg]:text-on-accent [&_button]:text-on-accent' : checked ? 'bg-surface-2' : 'hover:bg-surface-2 active:bg-surface-3')}
       >
         {selecting && <input type="checkbox" checked={checked} onChange={onToggle} aria-label={t('select.item', { title: item.title })} className="size-4 shrink-0 cursor-pointer accent-[var(--accent)]" />}
         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer" onClick={() => (selecting ? onToggle() : selectItem(item.id))} aria-current={selected ? 'true' : undefined}>

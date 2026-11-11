@@ -79,7 +79,7 @@ function Row({ icon, title, description, children }: { icon?: ReactNode; title: 
 
 function LinkRow({ icon, title, detail, onClick }: { icon: ReactNode; title: string; detail?: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 cursor-pointer">
+    <button type="button" onClick={onClick} className="lg-row flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 cursor-pointer">
       <span className="text-muted [&>svg]:size-[18px]">{icon}</span>
       <span className="min-w-0 flex-1 text-[15px] text-fg">{title}</span>
       {detail && <span className="text-sm text-faint">{detail}</span>}

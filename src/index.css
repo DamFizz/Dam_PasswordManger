@@ -49,6 +49,7 @@
   --success-soft: rgb(48 209 88 / 0.18);
   --glass: rgb(255 255 255 / 0.075);
   --glass-strong: rgb(30 30 36 / 0.62);
+  --menu-bg: rgb(38 38 44 / 0.95);
   --glass-hi: rgb(255 255 255 / 0.55);
   --glass-lo: rgb(255 255 255 / 0.05);
   --glass-sheen: rgb(255 255 255 / 0.1);
@@ -85,6 +86,7 @@
   --success-soft: rgb(52 199 89 / 0.15);
   --glass: rgb(255 255 255 / 0.5);
   --glass-strong: rgb(255 255 255 / 0.74);
+  --menu-bg: rgb(255 255 255 / 0.94);
   --glass-hi: rgb(255 255 255 / 1);
   --glass-lo: rgb(255 255 255 / 0.4);
   --glass-sheen: rgb(255 255 255 / 0.5);
@@ -235,6 +237,12 @@ select:focus-visible {
   opacity: 0.5;
   animation-duration: 52s;
   animation-direction: alternate-reverse;
+}
+@media (hover: none), (pointer: coarse) {
+  .lg-wallpaper::before,
+  .lg-wallpaper::after {
+    animation: none;
+  }
 }
 @keyframes lg-drift {
   0% {
@@ -417,16 +425,11 @@ select:focus-visible {
 svg.lucide {
   stroke-width: 1.8px;
 }
-/* Tactile press feedback */
+/* Tactile press feedback: see "Liquid press" below */
 .pressable {
   transition:
-    transform 160ms var(--ease-ios),
     background-color 160ms ease,
-    filter 160ms ease,
     opacity 160ms ease;
-}
-.pressable:active:not(:disabled) {
-  transform: scale(0.97);
 }
 
 /* ---------------------------------------------------------------- Liquid Glass motion */
@@ -469,20 +472,9 @@ svg.lucide {
     0 3px 10px rgb(0 0 0 / 0.18);
 }
 /* Pressing the selected item swells the drop like a lens */
-:has(> .lg-pill):has([data-liquid-active]:active) > .lg-pill {
-  scale: 1.07 1.12;
+:has(> .lg-pill):has([data-liquid-active][data-pressed]) > .lg-pill {
+  scale: 1.07 1.14;
   transition: scale 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
-}
-.lg-tab {
-  transition:
-    color 300ms ease,
-    transform 520ms var(--ease-jelly);
-}
-.lg-tab:active {
-  transform: scale(0.92);
-  transition:
-    color 300ms ease,
-    transform 160ms ease-out;
 }
 .lg-tab[aria-current='page'] svg {
   animation: mv-icon-pop 620ms var(--ease-jelly) backwards;
@@ -493,27 +485,109 @@ svg.lucide {
   }
 }
 
-/* Glass controls swell and brighten under the finger, then wobble back */
-.glass-clear.pressable,
-.glass-tint.pressable,
-.glass.pressable {
-  transition:
-    transform 640ms var(--ease-jelly),
-    filter 360ms ease,
-    background-color 160ms ease,
-    --lit 500ms ease;
+/*
+ * Liquid press. installLiquidPress() sets [data-pressed] while a control is held (at least
+ * ~140 ms, so quick taps show too) and [data-released] while it springs back. Only `scale`
+ * is animated, which runs on the compositor and composes with translate/transform.
+ */
+[data-pressed] {
+  animation: lg-press 150ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
-.glass-clear.pressable:active:not(:disabled),
-.glass-tint.pressable:active:not(:disabled),
-.glass.pressable:active:not(:disabled) {
+[data-released] {
+  animation: lg-unpress 620ms var(--ease-jelly) both;
+}
+@keyframes lg-press {
+  to {
+    scale: var(--press-scale, 0.95);
+  }
+}
+@keyframes lg-unpress {
+  from {
+    scale: var(--press-scale, 0.95);
+  }
+}
+/* Wide controls squish less; tabs a little more */
+.lg-soft,
+nav [aria-current],
+nav button {
+  --press-scale: 0.97;
+}
+.lg-tab {
+  --press-scale: 0.88;
+}
+/* Floating glass controls swell toward your finger like a drop of water */
+.glass-clear,
+.glass-tint,
+.glass,
+.glass-strong {
+  --press-scale: 1.08;
+}
+.glass-clear[data-pressed],
+.glass-tint[data-pressed],
+.glass[data-pressed] {
   --lit: 1;
-  transform: scale(1.08);
-  filter: brightness(1.12) saturate(1.15);
-  transition:
-    transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
-    filter 120ms ease,
-    background-color 160ms ease,
-    --lit 120ms ease;
+}
+/* Wide glass buttons swell gently, small round ones more */
+.glass-tint.lg-wide,
+.glass-clear.lg-wide {
+  --press-scale: 1.035;
+}
+/* Menus can sit inside another blurred layer, where their own blur has little to sample:
+   keep them nearly opaque so text behind never shows through */
+.glass-strong.lg-menu {
+  background: var(--menu-bg);
+}
+/* Big glass surfaces (dialogs, the tab bar) never move as a whole */
+nav.lg-tabbar,
+.mv-dialog-panel {
+  animation: none;
+}
+/* Rows highlight instead of shrinking */
+.lg-row[data-pressed],
+.lg-row[data-released] {
+  animation: none;
+}
+.lg-row {
+  transition: background-color 380ms ease;
+}
+.lg-row[data-pressed] {
+  background-color: var(--surface-3);
+  transition-duration: 60ms;
+}
+.lg-row-host:has(> [data-pressed]) {
+  --press-scale: 0.975;
+  animation: lg-press 150ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.lg-row-host:has(> [data-released]) {
+  --press-scale: 0.975;
+  animation: lg-unpress 620ms var(--ease-jelly) both;
+}
+.lg-row-host > [data-pressed],
+.lg-row-host > [data-released] {
+  animation: none;
+}
+/* iOS switch: the track stays put, the thumb stretches toward where it will go */
+button[role='switch'][data-pressed],
+button[role='switch'][data-released] {
+  animation: none;
+}
+button[role='switch'] > span {
+  transform-origin: left center;
+}
+button[role='switch'][aria-checked='true'] > span {
+  transform-origin: right center;
+}
+button[role='switch'][data-pressed] > span {
+  scale: 1.24 1;
+}
+/* Checkboxes pop when ticked */
+input[type='checkbox']:checked {
+  animation: mv-check 420ms var(--ease-jelly);
+}
+@keyframes mv-check {
+  from {
+    scale: 0.6;
+  }
 }
 .shadow-soft {
   box-shadow: var(--shadow);
@@ -550,8 +624,6 @@ dialog.mv-dialog {
 }
 dialog.mv-dialog::backdrop {
   background: var(--backdrop);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
   animation: mv-fade 260ms var(--ease-ios) both;
 }
 dialog.mv-dialog[data-closing]::backdrop {
@@ -562,6 +634,38 @@ dialog.mv-dialog[open] .mv-dialog-panel {
 }
 dialog.mv-dialog[data-closing] .mv-dialog-panel {
   animation: mv-pop-out 200ms var(--ease-ios) both;
+}
+dialog.mv-dialog[open] .mv-dialog-panel[data-from-press] {
+  transform-origin: var(--origin-x) var(--origin-y);
+  animation: mv-grow 560ms cubic-bezier(0.22, 0.8, 0.32, 1) backwards;
+}
+dialog.mv-dialog[data-closing] .mv-dialog-panel[data-from-press] {
+  animation: mv-shrink 220ms cubic-bezier(0.5, 0, 0.75, 0.3) both;
+}
+@keyframes mv-grow {
+  0% {
+    opacity: 0;
+    transform: scale(0.16);
+    border-radius: 60px;
+  }
+  28% {
+    opacity: 1;
+  }
+  55% {
+    transform: scale(1.025, 1.04);
+  }
+  78% {
+    transform: scale(0.994, 0.99);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes mv-shrink {
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+  }
 }
 @media (max-width: 639px) {
   dialog.mv-dialog.mv-sheet {
@@ -673,15 +777,35 @@ dialog.mv-dialog.mv-drawer[data-closing] .mv-dialog-panel {
   }
 }
 @keyframes mv-toast-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(-10px) scale(0.96);
+    transform: translateY(-14px) scale(0.4, 0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+  65% {
+    transform: scale(0.985, 1.02);
+  }
+  100% {
+    transform: none;
   }
 }
 @keyframes mv-toast-in-up {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.96);
+    transform: translateY(14px) scale(0.4, 0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+  65% {
+    transform: scale(0.985, 1.02);
+  }
+  100% {
+    transform: none;
   }
 }
 @keyframes mv-unlock {
@@ -724,12 +848,21 @@ dialog.mv-dialog.mv-drawer[data-closing] .mv-dialog-panel {
 .animate-unlock {
   animation: mv-unlock 480ms var(--ease-ios) backwards;
 }
+.animate-menu[data-closing] {
+  animation: mv-menu-out 170ms cubic-bezier(0.5, 0, 0.75, 0.3) both !important;
+}
+@keyframes mv-menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.6, 0.4);
+  }
+}
 .animate-menu {
   transform-origin: top right;
   animation: mv-menu 380ms cubic-bezier(0.25, 0.8, 0.35, 1) backwards;
 }
 .animate-toast-in {
-  animation: mv-toast-in 420ms var(--ease-spring) backwards;
+  animation: mv-toast-in 560ms cubic-bezier(0.22, 0.8, 0.32, 1) backwards;
 }
 @media (min-width: 768px) {
   .animate-toast-in {

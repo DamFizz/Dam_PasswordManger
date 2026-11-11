@@ -41,6 +41,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         'pressable inline-flex items-center justify-center whitespace-nowrap select-none cursor-pointer disabled:cursor-not-allowed',
         variants[variant],
         sizes[size],
+        (block || size !== 'sm') && 'lg-wide',
         block && 'w-full',
         className,
       )}

@@ -7,12 +7,13 @@ import { applyPrefsToDocument } from './state/prefs';
 import { getPrefs } from './state/prefs-store';
 import { boot } from './state/app';
 import './state/sync-controller';
-import { installLiquidLight } from './ui/liquid';
+import { installLiquidLight, installLiquidPress } from './ui/liquid';
 
 applyPrefsToDocument(getPrefs());
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyPrefsToDocument(getPrefs()));
 
 installLiquidLight();
+installLiquidPress();
 
 const secure = isSecureEnough();
 if (secure) void boot();

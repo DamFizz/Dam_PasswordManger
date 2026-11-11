@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '../cx';
 import { CollectionIcon, ITEM_TYPE_ICONS } from '../icons';
 import type { Collection, VaultItem } from '../../vault/types';
@@ -59,14 +59,29 @@ export function Badge({ children, tone = 'default', className }: { children: Rea
 /** Minimal accessible popover menu. */
 export function Menu({ trigger, children, align = 'end', className }: { trigger: (props: { onClick: () => void; 'aria-expanded': boolean; 'aria-haspopup': 'menu' }) => ReactNode; children: (close: () => void) => ReactNode; align?: 'start' | 'end'; className?: string }) {
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef(0);
+  const close = useCallback(() => {
+    if (document.documentElement.dataset.motion === 'reduced') {
+      setOpen(false);
+      return;
+    }
+    setClosing(true);
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+    }, 160);
+  }, []);
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (!ref.current?.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') close();
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const items = [...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
         const idx = items.indexOf(document.activeElement as HTMLElement);
@@ -82,16 +97,18 @@ export function Menu({ trigger, children, align = 'end', className }: { trigger:
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, close]);
   return (
     <div ref={ref} className={cx('relative', className)}>
-      {trigger({ onClick: () => setOpen((o) => !o), 'aria-expanded': open, 'aria-haspopup': 'menu' })}
+      {trigger({ onClick: () => (open && !closing ? close() : (window.clearTimeout(closeTimer.current), setClosing(false), setOpen(true))), 'aria-expanded': open && !closing, 'aria-haspopup': 'menu' })}
       {open && (
         <div
+          data-closing={closing ? '' : undefined}
+          inert={closing}
           role="menu"
-          className={cx('animate-menu glass-strong absolute z-40 mt-2 min-w-52 overflow-hidden rounded-[22px] p-1.5', align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left')}
+          className={cx('animate-menu glass-strong lg-menu absolute z-40 mt-2 min-w-52 overflow-hidden rounded-[22px] p-1.5', align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left')}
         >
-          {children(() => setOpen(false))}
+          {children(close)}
         </div>
       )}
     </div>
@@ -106,7 +123,7 @@ export function MenuItem({ icon, children, onSelect, tone, disabled }: { icon?: 
       disabled={disabled}
       onClick={onSelect}
       className={cx(
-        'flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2 text-left text-sm outline-none transition-colors cursor-pointer disabled:opacity-40',
+        'lg-row flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2 text-left text-sm outline-none cursor-pointer disabled:opacity-40',
         tone === 'danger' ? 'text-danger hover:bg-danger-soft focus:bg-danger-soft' : 'text-fg hover:bg-surface-3 focus:bg-surface-3',
       )}
     >
