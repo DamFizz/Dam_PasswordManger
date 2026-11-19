@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, FingerprintPattern, KeyRound, LifeBuoy, LockKeyhole, Smartphone } from 'lucide-react';
+import { FingerprintPattern, KeyRound, LifeBuoy, LockKeyhole, Smartphone } from 'lucide-react';
 import { useT } from '../../i18n';
 import { isAcceptableMasterPassword } from '../../lib/strength';
 import { app, attachSession, getRepo, startRecoveryUnlock, startUnlock, useApp } from '../../state/app';
 import { confirmDialog, toast } from '../../state/ui';
 import { InvalidCodeError, WrongPasswordError, type SecondFactorChallenge, type UnlockStep } from '../../vault/access';
+import { hasSecretKeyOnDevice, SecretKeyRequiredError, WrongSecretKeyError } from '../../vault/secret-key';
+import { InvalidSecretKeyError } from '../../vault/keys';
+import { usePrefs } from '../../state/prefs-store';
+import { Body, ErrorText, Footnote, GlassButton, GlassTextField, InsetGroup, LargeTitle, TextLink, ToggleRow } from '../m/kit';
 import { getQuickUnlock, isQuickUnlockPossible, quickUnlock } from '../../vault/quick-unlock';
 import { getThrottleState, ThrottledError } from '../../vault/throttle';
 import { Button } from '../components/Button';
-import { OtpInput } from '../components/Feedback';
-import { Checkbox, TextField } from '../components/Field';
-import { Logo } from '../components/Misc';
+import { TextField } from '../components/Field';
 import { Modal } from '../components/Modal';
 import { PasswordInput } from '../components/Secret';
 import { cx } from '../cx';
@@ -32,8 +34,12 @@ const TRUST_DAYS = 30;
 
 export function LockScreen() {
   const t = useT();
+  const { displayName } = usePrefs();
   const lockReason = useApp((s) => s.lockReason);
   const [password, setPassword] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [rememberSk, setRememberSk] = useState(true);
+  const [needsSecretKey, setNeedsSecretKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
@@ -51,6 +57,7 @@ export function LockScreen() {
       const s = await getThrottleState(getRepo());
       if (s.lockedUntil > Date.now()) setLockedUntil(s.lockedUntil);
       const header = await getRepo().getHeader();
+      if (header?.secretKey && !(await hasSecretKeyOnDevice(getRepo(), header))) setNeedsSecretKey(true);
       if (header && (await getQuickUnlock(getRepo(), header.vaultId)) && (await isQuickUnlockPossible())) setQuick(true);
     })();
   }, []);
@@ -60,6 +67,10 @@ export function LockScreen() {
   const fail = (e: unknown) => {
     setShake((n) => n + 1);
     if (e instanceof WrongPasswordError) setError(t('lock.wrongPassword'));
+    else if (e instanceof SecretKeyRequiredError) {
+      setNeedsSecretKey(true);
+      setError(t('a.err_secret_key_required'));
+    } else if (e instanceof WrongSecretKeyError || e instanceof InvalidSecretKeyError) setError(t('a.err_wrong_secret_key'));
     else if (e instanceof InvalidCodeError) setError(codeErrorText(e, t, useRecovery ? 'lock.wrongRecoveryCode' : 'lock.wrongCode'));
     else if (e instanceof ThrottledError) {
       setLockedUntil(e.retryAt);
@@ -83,7 +94,7 @@ export function LockScreen() {
     setBusy(true);
     setError(null);
     try {
-      await handleStep(await startUnlock(password));
+      await handleStep(await startUnlock(password, needsSecretKey ? { secretKey: secretKey.trim() || undefined, rememberSecretKey: rememberSk } : {}));
       setPassword('');
     } catch (e) {
       fail(e);
@@ -115,158 +126,159 @@ export function LockScreen() {
       : lockReason === 'hidden'
         ? t('lock.reason.hidden')
         : lockReason === 'downloaded'
-          ? t('lock.reason.downloaded')
+          ? t('a.lock_downloaded')
           : lockReason === 'restored'
             ? t('lock.reason.restored')
             : null;
+  const name = displayName.trim();
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center px-5 py-10">
-      <div key={shake} className={cx('glass w-full max-w-sm rounded-[32px] p-7 sm:p-8', shake > 0 && 'animate-shake')}>
-        <div className="mb-8 text-center">
-          <Logo className="mx-auto mb-5 size-12" />
-          <h1 className="text-[26px] font-bold tracking-tight">{challenge ? t('lock.twoStep') : t('lock.title')}</h1>
-          <p className="mt-1.5 text-sm text-muted">{challenge ? (useRecovery ? t('lock.enterRecovery') : t('lock.enterCode')) : (reasonText ?? t('lock.subtitle'))}</p>
-        </div>
-
-        <div>
-          {!challenge ? (
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void unlock();
-              }}
-            >
-              {/* A username field helps password managers/OS autofill associate the entry. */}
-              <input type="text" name="username" autoComplete="username" value="MyVault" readOnly hidden />
-              <PasswordInput
-                label={t('lock.masterPassword')}
-                value={password}
-                onValueChange={setPassword}
-                autoFocus
-                autoComplete="current-password"
-                name="password"
-                disabled={busy || remaining > 0}
-                error={error ?? undefined}
-              />
-              {remaining > 0 && (
-                <p role="alert" className="rounded-xl bg-warning-soft p-3 text-sm text-warning">
-                  {t('lock.throttled', { s: remaining })}
-                </p>
-              )}
-              <Button type="submit" variant="primary" size="lg" block loading={busy} disabled={!password || remaining > 0} icon={<LockKeyhole className="size-5" />}>
-                {busy ? t('lock.unlocking') : t('lock.unlock')}
-              </Button>
-              {quick && (
-                <Button
-                  size="lg"
-                  block
-                  disabled={busy || remaining > 0}
-                  icon={<FingerprintPattern className="size-5" />}
-                  onClick={async () => {
-                    setBusy(true);
-                    setError(null);
-                    try {
-                      await handleStep(await quickUnlock(getRepo()));
-                    } catch (e) {
-                      if (e instanceof DOMException && e.name === 'NotAllowedError') setError(t('lock.quickCancelled'));
-                      else fail(e);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  {t('lock.quickUnlock')}
-                </Button>
-              )}
-            </form>
+    <div className="h-full overflow-y-auto">
+      <div key={shake} className={cx('mx-auto flex min-h-full w-full max-w-[460px] flex-col gap-3.5 px-6 pb-10 pt-[calc(env(safe-area-inset-top)+72px)]', shake > 0 && 'animate-shake')}>
+        <span className="glass flex size-[88px] items-center justify-center rounded-full text-accent">
+          {challenge ? <Smartphone className="size-10" /> : <LockKeyhole className="size-10" />}
+        </span>
+        <div className="mt-1.5">
+          {challenge ? (
+            <LargeTitle>{t('a.twofa_title')}</LargeTitle>
+          ) : name ? (
+            <>
+              <p className="pl-0.5 text-[13px] uppercase tracking-[0.02em] text-faint">{t('a.unlock_title')}</p>
+              <LargeTitle>{t('a.welcome_name', { 1: name })}</LargeTitle>
+            </>
           ) : (
-            <div className="space-y-5">
-              {useRecovery ? (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void verifyCode();
-                  }}
-                  className="space-y-4"
-                >
-                  <TextField
-                    label={t('lock.recoveryCode')}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    placeholder="XXXXX-XXXXX"
-                    autoFocus
-                    autoComplete="off"
-                    className="secret tracking-widest"
-                    error={error ?? undefined}
-                    maxLength={11}
-                  />
-                  <Button type="submit" variant="primary" size="lg" block loading={busy} disabled={code.replace(/[^A-Z2-7]/gi, '').length < 10}>
-                    {t('lock.verify')}
-                  </Button>
-                </form>
-              ) : (
-                <>
-                  <div className="flex justify-center text-accent">
-                    <Smartphone className="size-8" />
-                  </div>
-                  <OtpInput value={code} onChange={setCode} onComplete={(v) => void verifyCode(v)} autoFocus disabled={busy || remaining > 0} invalid={!!error} />
-                  {error && (
-                    <p role="alert" className="text-center text-sm text-danger">
-                      {error}
-                    </p>
-                  )}
-                  <div className="flex justify-center">
-                    <Checkbox checked={trustDevice} onChange={setTrustDevice} label={t('lock.trustDevice', { n: TRUST_DAYS })} />
-                  </div>
-                  <Button variant="primary" size="lg" block loading={busy} disabled={code.length !== 6 || remaining > 0} onClick={() => void verifyCode()}>
-                    {t('lock.verify')}
-                  </Button>
-                </>
-              )}
-              {remaining > 0 && (
-                <p role="alert" className="rounded-xl bg-warning-soft p-3 text-sm text-warning">
-                  {t('lock.throttled', { s: remaining })}
-                </p>
-              )}
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-muted hover:text-fg cursor-pointer"
-                  onClick={() => {
-                    challenge.cancel();
-                    setChallenge(null);
-                    setUseRecovery(false);
-                    setError(null);
-                  }}
-                >
-                  <ArrowLeft className="size-4" /> {t('action.back')}
-                </button>
-                <button
-                  type="button"
-                  className="font-medium text-accent hover:underline cursor-pointer"
-                  onClick={() => {
-                    setUseRecovery((v) => !v);
-                    setCode('');
-                    setError(null);
-                  }}
-                >
-                  {useRecovery ? t('lock.useAuthenticator') : t('lock.useRecoveryCode', { n: challenge.recoveryCodesLeft })}
-                </button>
-              </div>
-            </div>
+            <LargeTitle>{t('a.unlock_title')}</LargeTitle>
           )}
+          {!challenge && reasonText && <Body className="mt-1">{reasonText}</Body>}
         </div>
 
-        {!challenge && (
-          <div className="mt-6 text-center">
-            <button type="button" className="text-sm text-muted hover:text-fg hover:underline cursor-pointer" onClick={() => setForgotOpen(true)}>
-              {t('lock.forgot')}
-            </button>
+        {!challenge ? (
+          <form
+            className="flex flex-col gap-3.5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void unlock();
+            }}
+          >
+            {/* A username field helps password managers/OS autofill associate the entry. */}
+            <input type="text" name="username" autoComplete="username" value="MyVault" readOnly hidden />
+            <GlassTextField value={password} onChange={setPassword} placeholder={t('a.master_password')} secret autoFocus autoComplete="current-password" name="password" disabled={busy || remaining > 0} />
+            {needsSecretKey && (
+              <>
+                <GlassTextField value={secretKey} onChange={(v) => setSecretKey(v.toUpperCase())} placeholder={t('a.secret_key')} mono />
+                <Footnote className="px-4">{t('a.secret_key_hint')}</Footnote>
+                <InsetGroup>
+                  <ToggleRow title={t('lock.rememberSecretKey')} checked={rememberSk} onChange={setRememberSk} />
+                </InsetGroup>
+              </>
+            )}
+            <ErrorText>{error}</ErrorText>
+            {remaining > 0 && (
+              <p role="alert" className="rounded-[16px] bg-warning-soft p-3 text-sm text-warning">
+                {t('lock.throttled', { s: remaining })}
+              </p>
+            )}
+            <GlassButton type="submit" block loading={busy} disabled={!password || remaining > 0}>
+              {busy ? t('lock.unlocking') : t('a.unlock_button')}
+            </GlassButton>
+            {quick && (
+              <GlassButton
+                block
+                prominent={false}
+                disabled={busy || remaining > 0}
+                icon={<FingerprintPattern />}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await handleStep(await quickUnlock(getRepo()));
+                  } catch (e) {
+                    if (e instanceof DOMException && e.name === 'NotAllowedError') setError(t('lock.quickCancelled'));
+                    else fail(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {t('lock.quickUnlock')}
+              </GlassButton>
+            )}
+            <TextLink onClick={() => setForgotOpen(true)}>{t('a.forgot_password')}</TextLink>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-3.5">
+            {useRecovery ? (
+              <form
+                className="flex flex-col gap-3.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void verifyCode();
+                }}
+              >
+                <GlassTextField value={code} onChange={(v) => setCode(v.toUpperCase().slice(0, 11))} placeholder={t('a.twofa_recovery_code')} mono autoFocus />
+                <Footnote className="px-4">{t('a.twofa_codes_left', { 1: challenge.recoveryCodesLeft })}</Footnote>
+                <ErrorText>{error}</ErrorText>
+                <GlassButton type="submit" block loading={busy} disabled={code.replace(/[^A-Z2-7]/gi, '').length < 10}>
+                  {t('a.twofa_recovery_button')}
+                </GlassButton>
+              </form>
+            ) : (
+              <>
+                <Body>{t('a.twofa_body')}</Body>
+                <GlassTextField
+                  value={code}
+                  onChange={(v) => {
+                    const c = v.replace(/\D/g, '').slice(0, 6);
+                    setCode(c);
+                    if (c.length === 6) void verifyCode(c);
+                  }}
+                  placeholder={t('a.twofa_code')}
+                  mono
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  disabled={busy || remaining > 0}
+                  onDone={() => code.length === 6 && void verifyCode()}
+                />
+                <InsetGroup>
+                  <ToggleRow title={t('lock.trustDevice', { n: TRUST_DAYS })} checked={trustDevice} onChange={setTrustDevice} />
+                </InsetGroup>
+                <ErrorText>{error}</ErrorText>
+                <GlassButton block loading={busy} disabled={code.length !== 6 || remaining > 0} onClick={() => void verifyCode()}>
+                  {t('a.twofa_verify')}
+                </GlassButton>
+              </>
+            )}
+            {remaining > 0 && (
+              <p role="alert" className="rounded-[16px] bg-warning-soft p-3 text-sm text-warning">
+                {t('lock.throttled', { s: remaining })}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <TextLink
+                tone="muted"
+                onClick={() => {
+                  challenge.cancel();
+                  setChallenge(null);
+                  setUseRecovery(false);
+                  setError(null);
+                }}
+              >
+                {t('a.back')}
+              </TextLink>
+              <TextLink
+                onClick={() => {
+                  setUseRecovery((v) => !v);
+                  setCode('');
+                  setError(null);
+                }}
+              >
+                {useRecovery ? t('lock.useAuthenticator') : t('a.twofa_use_recovery')}
+              </TextLink>
+            </div>
           </div>
         )}
-        <p className="mt-8 text-center text-xs text-faint">{t('lock.footer')}</p>
+        <p className="mt-auto pt-8 text-center text-xs text-faint">{t('lock.footer')}</p>
       </div>
       <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} onStep={handleStep} />
     </div>

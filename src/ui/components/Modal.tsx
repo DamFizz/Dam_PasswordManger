@@ -69,6 +69,12 @@ export function Modal({
     }
     const reduced = document.documentElement.dataset.motion === 'reduced';
     d.dataset.closing = '';
+    // Leave modal mode right away so the page behind is usable while the sheet animates out
+    // (a modal <dialog> makes everything else inert until it is closed).
+    if (!reduced && typeof d.show === 'function') {
+      d.close();
+      d.show();
+    }
     const id = window.setTimeout(() => {
       d.close();
       delete d.dataset.closing;

@@ -1,3 +1,5 @@
+import { androidEn } from './android-en';
+
 /** English strings. Keys are checked at compile time; ms.ts must provide every key. */
 export const en = {
   // ---------------------------------------------------------------- generic actions
@@ -839,6 +841,14 @@ export const en = {
   'settings.trustedDeviceForgotten': 'This device will ask for the code at the next unlock',
   'view.grid': 'Grid view',
   'view.list': 'List view',
+  // ---------------------------------------------------------------- web-only (shared screens)
+  'lock.rememberSecretKey': 'Remember the Secret Key on this device',
+  'sync.dismissAll': 'Dismiss all',
+  'settings.aboutPrivacyWeb': 'MyVault has no servers, no analytics, no trackers and no ads. The web app talks only to Google Drive when you turn on sync, and to Have I Been Pwned when you run the breach check.',
+  'settings.wipeConfirmWeb': 'This deletes the vault and all its local keys from this browser only. Your other devices, the cloud copy and your backups are not affected.',
+  'settings.photoNoteWeb': 'The photo is kept in this browser only. Liquid Glass looks best over a photo.',
+  // ---------------------------------------------------------------- shared with the Android app
+  ...androidEn,
 } as const;
 
 export type Dictionary = { readonly [K in keyof typeof en]: string };

@@ -28,124 +28,161 @@
   --color-success-soft: var(--success-soft);
 }
 
+/* Colours shared with the Android app (ui/glass/Theme.kt: DarkGlass / LightGlass). */
 :root,
 [data-theme='dark'] {
   color-scheme: dark;
-  --wall-base: #06070c;
+  --wall-base: #05070f;
   --bg: transparent;
-  --surface: rgb(255 255 255 / 0.07);
+  /* content groups are a quiet fill, not glass */
+  --surface: rgb(255 255 255 / 0.08);
   --surface-2: rgb(255 255 255 / 0.1);
-  --surface-3: rgb(255 255 255 / 0.16);
-  --border: rgb(255 255 255 / 0.1);
-  --border-strong: rgb(255 255 255 / 0.2);
-  --text: #ffffff;
-  --text-muted: rgb(235 235 245 / 0.66);
-  --text-faint: rgb(235 235 245 / 0.38);
-  --danger: #ff453a;
-  --danger-soft: rgb(255 69 58 / 0.18);
-  --warning: #ff9f0a;
-  --warning-soft: rgb(255 159 10 / 0.18);
-  --success: #30d158;
-  --success-soft: rgb(48 209 88 / 0.18);
-  --glass: rgb(255 255 255 / 0.075);
-  --glass-strong: rgb(30 30 36 / 0.62);
-  --menu-bg: rgb(38 38 44 / 0.95);
-  --glass-hi: rgb(255 255 255 / 0.55);
-  --glass-lo: rgb(255 255 255 / 0.05);
-  --glass-sheen: rgb(255 255 255 / 0.1);
+  --surface-3: rgb(255 255 255 / 0.18);
+  --border: rgb(255 255 255 / 0.12);
+  --border-strong: rgb(255 255 255 / 0.22);
+  --text: #f4f6ff;
+  --text-muted: rgb(230 234 255 / 0.7);
+  --text-faint: rgb(230 234 255 / 0.45);
+  --danger: #ff6b6b;
+  --danger-soft: rgb(255 107 107 / 0.18);
+  --warning: #ffb347;
+  --warning-soft: rgb(255 179 71 / 0.18);
+  --success: #34d399;
+  --success-soft: rgb(52 211 153 / 0.18);
+  --star: #ffd166;
+  --glass: rgb(10 15 34 / 0.22);
+  --glass-strong: rgb(16 20 38 / 0.62);
+  --menu-bg: rgb(24 28 46 / 0.95);
+  --glass-hi: rgb(255 255 255 / 0.45);
+  --glass-lo: rgb(255 255 255 / 0.08);
+  --glass-sheen: rgb(255 255 255 / 0.12);
   --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.38), 0 2px 6px rgb(0 0 0 / 0.2);
   --glass-inner: rgb(255 255 255 / 0.06);
-  --field: rgb(0 0 0 / 0.26);
-  --material: rgb(30 30 36 / 0.5);
-  --seg-track: rgb(0 0 0 / 0.25);
+  --field: rgb(255 255 255 / 0.1);
+  --material: rgb(16 20 38 / 0.5);
+  --seg-track: rgb(255 255 255 / 0.08);
   --seg-thumb: rgb(255 255 255 / 0.18);
-  --switch-off: rgb(120 120 128 / 0.4);
-  --backdrop: rgb(0 0 0 / 0.35);
+  --switch-off: rgb(255 255 255 / 0.18);
+  --backdrop: rgb(0 0 0 / 0.45);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 24px 64px rgb(0 0 0 / 0.5);
+  --wall-sheen: rgb(255 255 255 / 0.025);
   --wall-a: 0.55;
 }
 
 [data-theme='light'] {
   color-scheme: light;
-  --wall-base: #e7ecf6;
+  --wall-base: #eef1f7;
   --bg: transparent;
-  --surface: rgb(255 255 255 / 0.55);
-  --surface-2: rgb(120 120 128 / 0.12);
-  --surface-3: rgb(120 120 128 / 0.2);
-  --border: rgb(0 0 0 / 0.08);
-  --border-strong: rgb(0 0 0 / 0.16);
-  --text: #000000;
-  --text-muted: rgb(40 40 50 / 0.7);
-  --text-faint: rgb(40 40 50 / 0.42);
-  --danger: #ff3b30;
-  --danger-soft: rgb(255 59 48 / 0.12);
+  --surface: rgb(255 255 255 / 0.65);
+  --surface-2: rgb(11 16 32 / 0.06);
+  --surface-3: rgb(11 16 32 / 0.1);
+  --border: rgb(11 16 32 / 0.1);
+  --border-strong: rgb(11 16 32 / 0.18);
+  --text: #0b1020;
+  --text-muted: rgb(11 16 32 / 0.65);
+  --text-faint: rgb(11 16 32 / 0.4);
+  --danger: #e5484d;
+  --danger-soft: rgb(229 72 77 / 0.12);
   --warning: #b45f00;
   --warning-soft: rgb(255 149 0 / 0.16);
-  --success: #1f9d4c;
-  --success-soft: rgb(52 199 89 / 0.15);
-  --glass: rgb(255 255 255 / 0.5);
+  --success: #12935b;
+  --success-soft: rgb(18 147 91 / 0.14);
+  --star: #f5a524;
+  --glass: rgb(255 255 255 / 0.28);
   --glass-strong: rgb(255 255 255 / 0.74);
   --menu-bg: rgb(255 255 255 / 0.94);
-  --glass-hi: rgb(255 255 255 / 1);
-  --glass-lo: rgb(255 255 255 / 0.4);
+  --glass-hi: rgb(255 255 255 / 0.9);
+  --glass-lo: rgb(255 255 255 / 0.25);
   --glass-sheen: rgb(255 255 255 / 0.5);
   --glass-shadow: 0 12px 40px rgb(30 40 90 / 0.14), 0 2px 6px rgb(30 40 90 / 0.08);
   --glass-inner: rgb(255 255 255 / 0.55);
-  --field: rgb(255 255 255 / 0.6);
+  --field: rgb(11 16 32 / 0.06);
   --material: rgb(255 255 255 / 0.6);
-  --seg-track: rgb(120 120 128 / 0.14);
+  --seg-track: rgb(11 16 32 / 0.06);
   --seg-thumb: rgb(255 255 255 / 0.95);
-  --switch-off: rgb(120 120 128 / 0.22);
-  --backdrop: rgb(0 0 0 / 0.18);
+  --switch-off: rgb(11 16 32 / 0.16);
+  --backdrop: rgb(0 0 0 / 0.25);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
   --shadow-lg: 0 24px 64px rgb(30 40 90 / 0.18);
+  --wall-sheen: rgb(255 255 255 / 0.35);
   --wall-a: 0.45;
 }
 
-/* System colours */
+/* Reduce transparency: frostier, more opaque glass */
+[data-transparency='reduced'][data-theme='dark'] {
+  --glass: rgb(26 32 54 / 0.9);
+  --glass-strong: rgb(26 32 54 / 0.96);
+  --surface: rgb(255 255 255 / 0.1);
+}
+[data-transparency='reduced'][data-theme='light'] {
+  --glass: rgb(255 255 255 / 0.92);
+  --glass-strong: rgb(255 255 255 / 0.97);
+  --surface: rgb(255 255 255 / 0.85);
+}
+/* Increase contrast: solid outlines and stronger text */
+[data-contrast='more'][data-theme='dark'] {
+  --border: rgb(255 255 255 / 0.32);
+  --text-muted: rgb(240 243 255 / 0.88);
+  --text-faint: rgb(240 243 255 / 0.66);
+  --glass-hi: rgb(255 255 255 / 0.8);
+  --glass-lo: rgb(255 255 255 / 0.45);
+}
+[data-contrast='more'][data-theme='light'] {
+  --border: rgb(11 16 32 / 0.3);
+  --text-muted: rgb(11 16 32 / 0.85);
+  --text-faint: rgb(11 16 32 / 0.62);
+  --glass-hi: rgb(11 16 32 / 0.35);
+  --glass-lo: rgb(11 16 32 / 0.2);
+}
+
+/* Accent colours shared with the Android app (name -> light, dark) */
 :root,
 [data-accent='blue'] {
-  --accent: #0a84ff;
+  --accent: #7c9cff;
+  --on-accent: #ffffff;
+}
+[data-accent='blue'] {
+  --accent: #7c9cff;
   --on-accent: #ffffff;
 }
 [data-accent='teal'] {
-  --accent: #40c8e0;
+  --accent: #2dd4bf;
   --on-accent: #ffffff;
 }
 [data-accent='violet'] {
-  --accent: #5e5ce6;
+  --accent: #a78bfa;
   --on-accent: #ffffff;
 }
 [data-accent='emerald'] {
-  --accent: #30d158;
+  --accent: #34d399;
   --on-accent: #ffffff;
 }
 [data-accent='rose'] {
-  --accent: #ff375f;
+  --accent: #fb7185;
   --on-accent: #ffffff;
 }
 [data-accent='amber'] {
-  --accent: #ff9f0a;
+  --accent: #fbbf24;
   --on-accent: #ffffff;
 }
 [data-theme='light'][data-accent='blue'] {
-  --accent: #007aff;
+  --accent: #5b7cfa;
 }
 [data-theme='light'][data-accent='teal'] {
-  --accent: #30b0c7;
+  --accent: #0d9488;
 }
 [data-theme='light'][data-accent='violet'] {
-  --accent: #5856d6;
+  --accent: #7c3aed;
 }
 [data-theme='light'][data-accent='emerald'] {
-  --accent: #34c759;
+  --accent: #059669;
 }
 [data-theme='light'][data-accent='rose'] {
-  --accent: #ff2d55;
+  --accent: #e11d48;
 }
 [data-theme='light'][data-accent='amber'] {
-  --accent: #ff9500;
+  --accent: #d97706;
 }
 :root {
   --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
@@ -211,8 +248,19 @@ select:focus-visible {
   scrollbar-color: var(--border-strong) transparent;
 }
 
-/* Colourful wallpaper behind the glass (glass needs something to show through) */
+:root {
+  --b0: rgb(59 75 219 / 0.25);
+  --b1: rgb(30 58 138 / 0.15);
+  --b2: rgb(109 40 217 / 0.12);
+  --b3: rgb(14 165 233 / 0.1);
+}
+/*
+ * Wallpaper behind the glass: the Android app's presets (Theme.kt "Wallpapers"): a base colour
+ * with four soft light blobs. It stays still in the app (so idle screens stop redrawing) and
+ * drifts only on the sign-in screens, like Android. "photo" shows a picture kept on this device.
+ */
 .lg-wallpaper {
+  --p: 0.35;
   position: fixed;
   inset: 0;
   z-index: -1;
@@ -220,40 +268,137 @@ select:focus-visible {
   background: var(--wall-base);
   pointer-events: none;
 }
-.lg-wallpaper::before,
-.lg-wallpaper::after {
+.lg-wallpaper::before {
   content: '';
   position: absolute;
-  inset: -20%;
+  inset: 0;
   background:
-    radial-gradient(38% 42% at 18% 18%, color-mix(in srgb, var(--accent) calc(var(--wall-a) * 100%), transparent), transparent 70%),
-    radial-gradient(34% 38% at 85% 22%, color-mix(in srgb, #bf5af2 calc(var(--wall-a) * 80%), transparent), transparent 70%),
-    radial-gradient(40% 40% at 70% 88%, color-mix(in srgb, #64d2ff calc(var(--wall-a) * 75%), transparent), transparent 70%),
-    radial-gradient(30% 34% at 12% 85%, color-mix(in srgb, #ff6482 calc(var(--wall-a) * 55%), transparent), transparent 70%);
-  filter: blur(40px);
-  animation: lg-drift 38s ease-in-out infinite alternate;
+    linear-gradient(var(--wall-sheen), transparent 60%),
+    radial-gradient(circle max(85vw, 70vh) at calc((0.12 + 0.22 * var(--p)) * 100%) calc((0.14 + 0.04 * var(--p)) * 100%), var(--b0), transparent 70%),
+    radial-gradient(circle max(75vw, 62vh) at calc((0.98 - 0.26 * var(--p)) * 100%) calc((0.42 + 0.1 * var(--p)) * 100%), var(--b1), transparent 70%),
+    radial-gradient(circle max(90vw, 74vh) at calc((0.25 + 0.32 * var(--p)) * 100%) calc((0.96 - 0.06 * var(--p)) * 100%), var(--b2), transparent 70%),
+    radial-gradient(circle max(55vw, 46vh) at calc((0.8 - 0.1 * var(--p)) * 100%) 2%, var(--b3), transparent 70%);
 }
-.lg-wallpaper::after {
-  opacity: 0.5;
-  animation-duration: 52s;
-  animation-direction: alternate-reverse;
+@property --p {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.35;
 }
-@media (hover: none), (pointer: coarse) {
-  .lg-wallpaper::before,
-  .lg-wallpaper::after {
-    animation: none;
+.lg-wallpaper[data-live] {
+  animation: lg-wall-drift 16s ease-in-out infinite alternate;
+}
+@keyframes lg-wall-drift {
+  from {
+    --p: 0;
+  }
+  to {
+    --p: 1;
   }
 }
-@keyframes lg-drift {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(3%, -2%, 0) scale(1.06);
-  }
-  100% {
-    transform: translate3d(-3%, 2%, 0) scale(1.02);
-  }
+.lg-wallpaper-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lg-wallpaper-photo + .lg-wallpaper-dim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+}
+[data-theme='light'] .lg-wallpaper-photo + .lg-wallpaper-dim {
+  background: rgb(255 255 255 / 0.2);
+}
+:root[data-wallpaper='midnight'],
+:root[data-wallpaper='midnight'][data-theme='dark'] {
+  --wall-base: #05070f;
+  --b0: rgb(59 75 219 / 0.25);
+  --b1: rgb(30 58 138 / 0.15);
+  --b2: rgb(109 40 217 / 0.12);
+  --b3: rgb(14 165 233 / 0.1);
+}
+:root[data-wallpaper='midnight'][data-theme='light'] {
+  --wall-base: #eef1f7;
+  --b0: rgb(147 165 255 / 0.3);
+  --b1: rgb(153 197 240 / 0.2);
+  --b2: rgb(196 181 253 / 0.15);
+  --b3: rgb(191 219 254 / 0.15);
+}
+:root[data-wallpaper='graphite'],
+:root[data-wallpaper='graphite'][data-theme='dark'] {
+  --wall-base: #0c0d10;
+  --b0: rgb(70 75 85 / 0.2);
+  --b1: rgb(48 52 64 / 0.15);
+  --b2: rgb(58 63 74 / 0.12);
+  --b3: rgb(255 255 255 / 0.08);
+}
+:root[data-wallpaper='graphite'][data-theme='light'] {
+  --wall-base: #f1f2f4;
+  --b0: rgb(205 209 216 / 0.33);
+  --b1: rgb(221 224 229 / 0.25);
+  --b2: rgb(195 199 207 / 0.2);
+  --b3: rgb(255 255 255 / 0.15);
+}
+:root[data-wallpaper='ocean'],
+:root[data-wallpaper='ocean'][data-theme='dark'] {
+  --wall-base: #031017;
+  --b0: rgb(6 182 212 / 0.33);
+  --b1: rgb(14 165 233 / 0.3);
+  --b2: rgb(21 94 117 / 0.25);
+  --b3: rgb(34 211 238 / 0.2);
+}
+:root[data-wallpaper='ocean'][data-theme='light'] {
+  --wall-base: #eaf6fa;
+  --b0: rgb(103 232 249 / 0.4);
+  --b1: rgb(125 211 252 / 0.35);
+  --b2: rgb(165 243 252 / 0.25);
+  --b3: rgb(147 197 253 / 0.2);
+}
+:root[data-wallpaper='sunset'],
+:root[data-wallpaper='sunset'][data-theme='dark'] {
+  --wall-base: #120812;
+  --b0: rgb(249 115 22 / 0.36);
+  --b1: rgb(236 72 153 / 0.33);
+  --b2: rgb(124 58 237 / 0.3);
+  --b3: rgb(245 158 11 / 0.2);
+}
+:root[data-wallpaper='sunset'][data-theme='light'] {
+  --wall-base: #fff4ee;
+  --b0: rgb(253 186 116 / 0.4);
+  --b1: rgb(249 168 212 / 0.36);
+  --b2: rgb(196 181 253 / 0.3);
+  --b3: rgb(253 230 138 / 0.25);
+}
+:root[data-wallpaper='aurora'],
+:root[data-wallpaper='aurora'][data-theme='dark'] {
+  --wall-base: #070a16;
+  --b0: rgb(109 77 255 / 0.55);
+  --b1: rgb(34 211 238 / 0.4);
+  --b2: rgb(236 72 153 / 0.4);
+  --b3: rgb(59 130 246 / 0.3);
+}
+:root[data-wallpaper='aurora'][data-theme='light'] {
+  --wall-base: #edf0f8;
+  --b0: rgb(165 180 252 / 0.5);
+  --b1: rgb(153 246 228 / 0.45);
+  --b2: rgb(251 207 232 / 0.45);
+  --b3: rgb(186 230 253 / 0.4);
+}
+:root[data-wallpaper='plain'],
+:root[data-wallpaper='plain'][data-theme='dark'] {
+  --wall-base: #0a0b10;
+  --b0: transparent;
+  --b1: transparent;
+  --b2: transparent;
+  --b3: transparent;
+}
+:root[data-wallpaper='plain'][data-theme='light'] {
+  --wall-base: #f2f3f6;
+  --b0: transparent;
+  --b1: transparent;
+  --b2: transparent;
+  --b3: transparent;
 }
 
 @layer components {
@@ -626,6 +771,13 @@ dialog.mv-dialog::backdrop {
   background: var(--backdrop);
   animation: mv-fade 260ms var(--ease-ios) both;
 }
+/* While closing, the dialog is non-modal (see Modal.tsx): keep it fixed on top of the page */
+dialog.mv-dialog[data-closing] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
 dialog.mv-dialog[data-closing]::backdrop {
   animation: mv-fade-out 220ms var(--ease-ios) both;
 }
@@ -939,6 +1091,175 @@ input.otp::-webkit-outer-spin-button,
 input.otp::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+
+/* ================================================================ Android-parity screens */
+/* Floating top bar: content dissolves under it (scroll edge effect) */
+.lg-topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -18px 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(var(--wall-base) 0%, color-mix(in srgb, var(--wall-base) 70%, transparent) 55%, transparent);
+}
+[data-wallpaper='photo'] .lg-topbar::before {
+  background: linear-gradient(rgb(0 0 0 / 0.35), transparent);
+}
+[data-theme='light'][data-wallpaper='photo'] .lg-topbar::before {
+  background: linear-gradient(rgb(255 255 255 / 0.4), transparent);
+}
+/* Search: the round button grows into a field and the other buttons step aside */
+.lg-search {
+  width: 46px;
+  transition: width 420ms var(--ease-ios);
+}
+.lg-search-open {
+  width: min(100%, 640px);
+}
+.lg-search-siblings {
+  transition:
+    opacity 220ms ease,
+    transform 380ms var(--ease-ios),
+    width 380ms var(--ease-ios);
+}
+.lg-search-siblings-hidden {
+  opacity: 0;
+  transform: scale(0.6);
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* Pushed screens slide in from the right; going back pops to the left */
+.animate-screen-push {
+  animation: mv-screen-push 420ms cubic-bezier(0.25, 0.8, 0.3, 1) backwards;
+}
+.animate-screen-pop {
+  animation: mv-screen-pop 380ms cubic-bezier(0.25, 0.8, 0.3, 1) backwards;
+}
+.animate-screen-out {
+  animation: mv-screen-out 260ms var(--ease-ios) both;
+}
+@keyframes mv-screen-push {
+  from {
+    opacity: 0;
+    transform: translateX(33%);
+  }
+}
+@keyframes mv-screen-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-12%);
+  }
+}
+@keyframes mv-screen-out {
+  to {
+    opacity: 0;
+    transform: translateX(33%);
+  }
+}
+/* The editor covers the screen with the wallpaper behind it */
+.lg-editor {
+  background: var(--wall-base);
+}
+/* Selectors whose pill is the accent colour (Android FlowingSelector pillColor = accent) */
+.lg-seg-accent {
+  background: var(--surface);
+  padding: 4px;
+}
+.lg-seg-accent > .lg-pill {
+  background: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.lg-seg-accent > [aria-selected='true'] {
+  color: var(--on-accent);
+}
+/* Cards: a quieter colour wash in light mode */
+[data-theme='light'] .lg-card {
+  --card-wash: 14%;
+}
+/* Tiles and cards highlight under the finger */
+.lg-tile,
+.lg-card {
+  transition: background-color 300ms ease;
+}
+.lg-tile:hover,
+.lg-card:hover {
+  background-color: color-mix(in srgb, var(--surface) 100%, var(--text) 4%);
+}
+.lg-card[data-pressed],
+.lg-tile[data-pressed] {
+  --press-scale: 0.98;
+}
+/* Sliders (generator) */
+.lg-slider {
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.lg-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.lg-slider::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.2), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+}
+.lg-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.lg-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.lg-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.2);
+}
+.lg-slider {
+  accent-color: var(--accent);
+}
+/* Full-screen QR: dark scrim, the code on white */
+dialog.mv-dialog:has(.lg-qr-full)::backdrop {
+  background: rgb(0 0 0 / 0.86);
+}
+.lg-qr-full {
+  width: 100vw;
+  height: 100dvh;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lg-qr-full::after,
+.lg-qr-full::before {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Danger-tinted prominent glass button */
+.glass-tint.m-btn-danger {
+  background: color-mix(in srgb, var(--danger) 82%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 6px 20px color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 @media print {

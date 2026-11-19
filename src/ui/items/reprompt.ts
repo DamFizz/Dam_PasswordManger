@@ -26,6 +26,12 @@ export async function ensureItemAccess(item: VaultItem): Promise<boolean> {
   return !!ok;
 }
 
+/** True while a protected item is unlocked (within the grace period after the master password). */
+export function isItemUnlocked(id: string): boolean {
+  const at = verifiedAt.get(id);
+  return !!at && Date.now() - at < GRACE_MS;
+}
+
 export function clearRepromptGrace(): void {
   verifiedAt.clear();
 }

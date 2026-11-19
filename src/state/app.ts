@@ -6,16 +6,11 @@ import { t } from '../i18n';
 import { clearPendingNow } from '../lib/clipboard';
 import { randomId } from '../lib/encoding';
 import { createVault, unlockWithPassword, unlockWithRecoveryKey, type UnlockStep } from '../vault/access';
+import type { SecretKeySource } from '../vault/secret-key';
+import { makeAsset } from '../lib/space';
 import { VaultDB, VaultRepository } from '../vault/db';
 import type { ConflictNotice, VaultSession } from '../vault/session';
-import {
-  DEFAULT_VAULT_SETTINGS,
-  emptyItem,
-  type Collection,
-  type ItemType,
-  type VaultItem,
-  type VaultSettings,
-} from '../vault/types';
+import { DEFAULT_VAULT_SETTINGS, emptyItem, type Collection, type ItemType, type VaultItem, type VaultSettings, type SpaceEntry, type SpaceAsset, type SpaceOwner, type SpaceType } from '../vault/types';
 import { broadcastLock, startAutoLock } from './autolock';
 import { getPrefs } from './prefs-store';
 import { createStore, useStore } from './store';
@@ -35,8 +30,17 @@ export type Filter =
   | { kind: 'trash' }
   | { kind: 'ids'; ids: string[]; label: string };
 
+/**
+ * Screens, as in the Android app: four tabs (Vault, My Space, Generator, Security) and screens
+ * pushed on top of them (item, editor, settings...). Pushed screens have a back button and no tab bar.
+ */
 export type Route =
+  | { name: 'home' }
   | { name: 'items'; filter: Filter }
+  | { name: 'item'; id: string }
+  | { name: 'space' }
+  | { name: 'spaceItem'; id: string }
+  | { name: 'spaceEdit'; id?: string; type: SpaceType; owner: SpaceOwner }
   | { name: 'generator' }
   | { name: 'security' }
   | { name: 'sync' }
@@ -44,8 +48,45 @@ export type Route =
   | { name: 'backup' }
   | { name: 'organize'; create?: 'section' | 'category' };
 
-/** The vault list is the home screen. */
-export const HOME: Route = { name: 'items', filter: { kind: 'all' } };
+export type Tab = 'vault' | 'space' | 'generator' | 'security';
+
+/** The vault home (overview + category tiles) is the first screen. */
+export const HOME: Route = { name: 'home' };
+
+export function tabOf(r: Route): Tab | null {
+  switch (r.name) {
+    case 'home':
+    case 'items':
+      return 'vault';
+    case 'space':
+      return 'space';
+    case 'generator':
+      return 'generator';
+    case 'security':
+      return 'security';
+    default:
+      return null;
+  }
+}
+
+/** How deep a screen sits: deeper screens push in from the right, going back pops to the left. */
+export function depthOf(r: Route): number {
+  switch (r.name) {
+    case 'home':
+    case 'space':
+    case 'generator':
+    case 'security':
+      return 0;
+    case 'items':
+      return 1;
+    case 'item':
+    case 'spaceItem':
+    case 'settings':
+      return 2;
+    default:
+      return 3;
+  }
+}
 
 export interface EditorState {
   mode: 'new' | 'edit';
@@ -64,6 +105,10 @@ export interface AppState {
   conflicts: ConflictNotice[];
   corrupted: number;
   route: Route;
+  /** screens under the current one, for Back */
+  stack: Route[];
+  /** My Space entries (bank accounts and payment QR codes) */
+  space: SpaceEntry[];
   selectedId: string | null;
   editor: EditorState | null;
   search: string;
@@ -72,9 +117,11 @@ export interface AppState {
   lastBackupAt: number | null;
 }
 
-const EMPTY: Pick<AppState, 'session' | 'items' | 'collections' | 'settings' | 'usage' | 'conflicts' | 'corrupted' | 'selectedId' | 'editor' | 'search' | 'selection' | 'lastBackupAt'> = {
+const EMPTY: Pick<AppState, 'session' | 'items' | 'collections' | 'settings' | 'usage' | 'conflicts' | 'corrupted' | 'selectedId' | 'editor' | 'search' | 'selection' | 'lastBackupAt' | 'space' | 'stack'> = {
   session: null,
   items: [],
+  space: [],
+  stack: [],
   collections: [],
   settings: DEFAULT_VAULT_SETTINGS,
   usage: {},
@@ -145,6 +192,7 @@ async function refreshFromSession(session: VaultSession): Promise<void> {
   const secrets = await session.getDeviceSecrets();
   app.set({
     items: session.items(),
+    space: session.spaceEntries(),
     collections: session.collections(),
     settings: session.settings(),
     usage: secrets.usage,
@@ -210,8 +258,8 @@ export async function createNewVault(password: string): Promise<VaultSession> {
   return session;
 }
 
-export async function startUnlock(password: string): Promise<UnlockStep> {
-  return unlockWithPassword(getRepo(), password);
+export async function startUnlock(password: string, opts: SecretKeySource = {}): Promise<UnlockStep> {
+  return unlockWithPassword(getRepo(), password, opts);
 }
 
 export async function startRecoveryUnlock(recoveryKey: string, newPassword: string): Promise<UnlockStep> {
@@ -220,12 +268,91 @@ export async function startRecoveryUnlock(recoveryKey: string, newPassword: stri
 
 // ------------------------------------------------------------------ navigation
 
+/**
+ * Go to a screen. A tab resets the stack; a screen opened from another is pushed so Back returns
+ * to it (like the Android app).
+ */
 export function navigate(route: Route): void {
-  app.set({ route, selectedId: null, selection: [] });
+  const { route: current, stack } = app.get();
+  if (tabOf(route)) {
+    app.set({ route, stack: [], selectedId: null, selection: [], editor: null });
+    return;
+  }
+  const same = current.name === route.name && JSON.stringify(current) === JSON.stringify(route);
+  if (same) return;
+  // replacing a screen of the same depth (e.g. settings -> sync) keeps the stack below it
+  const next = depthOf(route) > depthOf(current) || tabOf(current) ? [...stack, current] : stack;
+  app.set({ route, stack: next, selectedId: route.name === 'item' ? route.id : null, selection: [] });
+}
+
+/** Back: close the editor, or pop to the previous screen (or the vault home). */
+export function back(): void {
+  const { editor, stack, route } = app.get();
+  if (editor) {
+    closeEditor();
+    return;
+  }
+  if (stack.length) {
+    const prev = stack[stack.length - 1]!;
+    app.set({ route: prev, stack: stack.slice(0, -1), selectedId: prev.name === 'item' ? prev.id : null, selection: [] });
+    return;
+  }
+  if (route.name === 'items') app.set({ route: HOME, selection: [] });
 }
 
 export function selectItem(id: string | null): void {
-  app.set({ selectedId: id });
+  if (id) navigate({ name: 'item', id });
+  else if (app.get().route.name === 'item') back();
+}
+
+/** Leave an item screen whose item is gone (trashed, archived, deleted). */
+function leaveItems(ids: string[]): void {
+  const r = app.get().route;
+  if (r.name === 'item' && ids.includes(r.id)) back();
+}
+
+// ------------------------------------------------------------------ My Space
+
+export async function saveSpaceEntry(entry: SpaceEntry, newAsset?: SpaceAsset | null, dropAssetId?: string | null): Promise<void> {
+  await requireSession().saveSpaceEntry({ ...entry, updatedAt: Date.now() }, newAsset, dropAssetId);
+}
+
+/**
+ * Save an entry (Android VaultViewModel.saveSpace). `image` = a newly picked QR, stored in the same
+ * write as the entry; `removeImage` = drop the current QR without a replacement. Returns the id.
+ */
+export async function saveSpaceWithImage(
+  entry: SpaceEntry,
+  image: { bytes: Uint8Array; mime: string; width: number; height: number } | null,
+  removeImage: boolean,
+): Promise<string> {
+  const session = requireSession();
+  const now = Date.now();
+  const previous = session.spaceEntry(entry.id);
+  const old = previous?.qrAssetId ?? null;
+  const asset = image ? await makeAsset(entry.id, image.mime, image.width, image.height, image.bytes, now) : null;
+  const next: SpaceEntry = {
+    ...entry,
+    qrAssetId: asset ? asset.id : removeImage ? null : (old ?? entry.qrAssetId ?? null),
+    createdAt: entry.createdAt || now,
+    updatedAt: now,
+  };
+  await session.saveSpaceEntry(next, asset, asset || removeImage ? old : null);
+  toast(t('a.space_saved'));
+  return next.id;
+}
+
+export async function deleteSpaceEntry(id: string): Promise<void> {
+  await requireSession().deleteSpaceEntry(id);
+  toast(t('a.space_deleted'));
+  const r = app.get().route;
+  if (r.name === 'spaceItem' && r.id === id) back();
+}
+
+export async function toggleSpaceFavorite(id: string): Promise<void> {
+  const session = requireSession();
+  const e = session.spaceEntry(id);
+  if (e) await session.saveSpaceEntry({ ...e, favorite: !e.favorite, updatedAt: Date.now() });
 }
 
 export function openEditor(editor: EditorState): void {
@@ -305,7 +432,7 @@ function undoable(message: string, before: VaultItem[]): void {
 export async function trashItems(ids: string[]): Promise<void> {
   try {
     const before = await patchItems(ids, (i) => ({ ...i, trashedAt: Date.now() }));
-    if (ids.includes(app.get().selectedId ?? '')) app.set({ selectedId: null });
+    leaveItems(ids);
     app.set({ selection: [] });
     undoable(t('toast.movedToTrash', { n: before.length }), before);
   } catch (e) {
@@ -327,7 +454,7 @@ export async function archiveItems(ids: string[], archived: boolean): Promise<vo
   try {
     const before = await patchItems(ids, (i) => ({ ...i, archivedAt: archived ? Date.now() : null }));
     app.set({ selection: [] });
-    if (archived && ids.includes(app.get().selectedId ?? '')) app.set({ selectedId: null });
+    if (archived) leaveItems(ids);
     undoable(archived ? t('toast.archived', { n: before.length }) : t('toast.unarchived', { n: before.length }), before);
   } catch (e) {
     toastError(e);
@@ -344,7 +471,8 @@ export async function purgeItems(ids: string[]): Promise<boolean> {
   if (!ok) return false;
   try {
     await requireSession().purgeItems(ids);
-    app.set({ selection: [], selectedId: ids.includes(app.get().selectedId ?? '') ? null : app.get().selectedId });
+    app.set({ selection: [] });
+    leaveItems(ids);
     toast(t('toast.deleted', { n: ids.length }));
     return true;
   } catch (e) {
@@ -412,7 +540,7 @@ export async function duplicateItem(id: string): Promise<void> {
     const now = Date.now();
     const copy: VaultItem = { ...structuredClone(src), id: randomId(), title: `${src.title} ${t('item.copySuffix')}`, createdAt: now, updatedAt: now, favorite: false, passwordHistory: [] };
     await session.saveItem(copy);
-    app.set({ selectedId: copy.id });
+    navigate({ name: 'item', id: copy.id });
     toast(t('toast.duplicated'));
   } catch (e) {
     toastError(e);
@@ -437,7 +565,7 @@ export async function deleteCollection(id: string, moveTo: string | null): Promi
   await requireSession().deleteCollection(id, moveTo);
   const { route } = app.get();
   if (route.name === 'items' && (route.filter.kind === 'category' || route.filter.kind === 'section') && route.filter.id === id) {
-    navigate({ name: 'items', filter: { kind: 'all' } });
+    navigate(HOME);
   }
 }
 

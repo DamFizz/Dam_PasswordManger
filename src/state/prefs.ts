@@ -5,6 +5,9 @@
  */
 export type Accent = 'teal' | 'violet' | 'blue' | 'emerald' | 'rose' | 'amber';
 export type Lang = 'en' | 'ms';
+/** Background presets shared with the Android app ("photo" = a picture kept on this device). */
+export type Wallpaper = 'midnight' | 'graphite' | 'ocean' | 'sunset' | 'aurora' | 'plain' | 'photo';
+export const WALLPAPERS: Wallpaper[] = ['midnight', 'graphite', 'ocean', 'sunset', 'aurora', 'plain', 'photo'];
 
 export interface Prefs {
   theme: 'dark' | 'light' | 'system';
@@ -30,10 +33,18 @@ export interface Prefs {
   autoSync: boolean;
   tourDone: boolean;
   backupReminderDays: number;
+  wallpaper: Wallpaper;
+  /** Optional name for the lock-screen greeting ("Welcome, name"). Kept on this device only,
+   *  outside the encrypted vault (it must be readable before unlocking), so it is not secret. */
+  displayName: string;
+  /** frostier, more opaque glass without refraction */
+  reduceTransparency: boolean;
+  /** stronger outlines and more opaque glass */
+  highContrast: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
-  theme: 'dark',
+  theme: 'system',
   accent: 'blue',
   lang: typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ms') ? 'ms' : 'en',
   motion: 'system',
@@ -50,6 +61,10 @@ export const DEFAULT_PREFS: Prefs = {
   autoSync: true,
   tourDone: false,
   backupReminderDays: 30,
+  wallpaper: 'midnight',
+  displayName: '',
+  reduceTransparency: false,
+  highContrast: false,
 };
 
 const KEY = 'myvault.prefs';
@@ -78,9 +93,12 @@ export function applyPrefsToDocument(p: Prefs): void {
   root.dataset.theme = dark ? 'dark' : 'light';
   root.dataset.accent = p.accent;
   root.dataset.density = p.density;
+  root.dataset.wallpaper = p.wallpaper;
+  root.dataset.transparency = p.reduceTransparency ? 'reduced' : 'full';
+  root.dataset.contrast = p.highContrast || window.matchMedia('(prefers-contrast: more)').matches ? 'more' : 'normal';
   const reduce = p.motion === 'system' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : p.motion === 'reduced';
   root.dataset.motion = reduce ? 'reduced' : 'full';
   root.lang = p.lang;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#111113' : '#f7f7f8');
+  if (meta) meta.setAttribute('content', dark ? '#05070f' : '#eef1f7');
 }

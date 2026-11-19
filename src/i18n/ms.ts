@@ -1,3 +1,4 @@
+import { androidMs } from './android-ms';
 import type { Dictionary } from './en';
 
 /** Bahasa Melayu. */
@@ -817,4 +818,12 @@ export const ms: Dictionary = {
   'settings.trustedDeviceForgotten': 'Peranti ini akan meminta kod pada buka kunci seterusnya',
   'view.grid': 'Paparan grid',
   'view.list': 'Paparan senarai',
+  // web sahaja (skrin dikongsi)
+  'lock.rememberSecretKey': 'Ingat Secret Key pada peranti ini',
+  'sync.dismissAll': 'Tutup semua',
+  'settings.aboutPrivacyWeb': 'MyVault tiada pelayan, tiada analitik, tiada penjejak dan tiada iklan. Aplikasi web hanya berhubung dengan Google Drive apabila anda menghidupkan penyegerakan, dan dengan Have I Been Pwned apabila anda menjalankan semakan kebocoran.',
+  'settings.wipeConfirmWeb': 'Ini memadam peti besi dan semua kunci tempatannya daripada pelayar ini sahaja. Peranti lain, salinan awan dan sandaran anda tidak terjejas.',
+  'settings.photoNoteWeb': 'Foto disimpan dalam pelayar ini sahaja. Liquid Glass kelihatan terbaik di atas foto.',
+  // shared with the Android app
+  ...androidMs,
 };

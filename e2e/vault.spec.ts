@@ -11,13 +11,13 @@ async function createVault(page: Page) {
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: /create vault/i }).click();
   await page.getByRole('button', { name: /skip for now/i }).click({ timeout: 30_000 });
-  await expect(page.getByRole('heading', { name: 'All items' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'MyVault', level: 1 })).toBeVisible();
 }
 
 async function unlock(page: Page) {
   await page.getByLabel('Master password', { exact: true }).fill(MASTER);
   await page.getByRole('button', { name: /^unlock$/i }).click();
-  await expect(page.getByRole('heading', { name: 'All items' }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'MyVault', level: 1 })).toBeVisible({ timeout: 30_000 });
 }
 
 test('create, add, lock, reload, unlock, work offline — with no CSP violations', async ({ page, context }) => {
@@ -29,19 +29,20 @@ test('create, add, lock, reload, unlock, work offline — with no CSP violations
 
   await createVault(page);
 
-  await page.getByRole('button', { name: /add a password/i }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Title', { exact: true }).fill('Steam');
-  await dialog.getByLabel('Username', { exact: true }).fill('gamer42');
-  await dialog.getByLabel('Password', { exact: true }).fill('Steam-Pass-Very-Secret-1');
-  await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(page.getByRole('heading', { name: 'Steam', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'New item' }).click();
+  await page.getByRole('dialog', { name: 'What would you like to save?' }).getByRole('button', { name: 'Login' }).click();
+  await page.getByLabel('Title', { exact: true }).fill('Steam');
+  await page.getByLabel('Username', { exact: true }).fill('gamer42');
+  await page.getByLabel('Password', { exact: true }).fill('Steam-Pass-Very-Secret-1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Steam', level: 1 })).toBeVisible();
   await expect(page.getByText('Steam-Pass-Very-Secret-1')).toHaveCount(0);
-  // New items are protected by default: revealing asks for the master password
-  await page.getByRole('button', { name: 'Show Password' }).click();
+  // New items are protected by default: unlock with the master password, then reveal
+  await page.getByRole('button', { name: 'Unlock item' }).click();
   const prompt = page.getByRole('dialog', { name: 'Protected item' });
   await prompt.getByLabel('Master password', { exact: true }).fill(MASTER);
   await prompt.getByRole('button', { name: 'Unlock item' }).click();
+  await page.getByRole('button', { name: 'Show Password' }).click();
   await expect(page.getByText('Steam-Pass-Very-Secret-1')).toBeVisible({ timeout: 15_000 });
 
   // Nothing readable is persisted
@@ -69,7 +70,7 @@ test('create, add, lock, reload, unlock, work offline — with no CSP violations
 
   // Reload while unlocked → the vault is locked (keys only live in memory)
   await page.reload();
-  await expect(page.getByRole('heading', { name: /myvault is locked/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Unlock' })).toBeVisible();
   await expect(page.getByText('Steam')).toHaveCount(0);
   await unlock(page);
 
@@ -81,9 +82,9 @@ test('create, add, lock, reload, unlock, work offline — with no CSP violations
   await page.reload();
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: /myvault is locked/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Unlock' })).toBeVisible();
   await unlock(page);
-  await page.getByRole('button', { name: 'Vault', exact: true }).or(page.getByRole('button', { name: /^All items/ })).first().click();
+  await page.getByRole('button', { name: /All items/ }).first().click();
   await expect(page.getByText('gamer42').first()).toBeVisible();
   await context.setOffline(false);
 
