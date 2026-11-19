@@ -100,11 +100,64 @@ export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   updatedAt: 0,
 };
 
+// ---------------------------------------------------------------- My Space (same format as the Android app)
+
+/** Whose details these are. Absent = the user's own (entries saved before this field existed). */
+export type SpaceOwner = 'me' | 'other';
+/** 'bank' = account number and/or an attached payment QR; 'qr' = a payment QR on its own. */
+export type SpaceType = 'bank' | 'qr';
+
+/** A bank account or payment QR kept in "My Space". Stored as an encrypted record of kind `space`. */
+export interface SpaceEntry {
+  id: string;
+  type: SpaceType;
+  /** Nickname, e.g. "Personal". */
+  title: string;
+  /** id from BANKS, or "custom" */
+  bankId?: string | null;
+  /** display name (kept even for known banks, so catalogue renames never change saved data) */
+  bankName?: string | null;
+  holder?: string | null;
+  /** always a string: leading zeros and the exact digits are preserved */
+  accountNumber?: string | null;
+  duitNowId?: string | null;
+  /** "savings" | "current" | "other" | free text */
+  accountType?: string | null;
+  notes?: string | null;
+  /** hex colour, e.g. "#2563eb" */
+  color?: string | null;
+  icon?: string | null;
+  favorite: boolean;
+  /** id of the `asset` record holding the payment QR image, if any */
+  qrAssetId?: string | null;
+  order: number;
+  owner?: SpaceOwner | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** An encrypted image: the original bytes as imported (base64) inside an `asset` record. */
+export interface SpaceAsset {
+  id: string;
+  ownerId?: string | null;
+  mime: string;
+  width: number;
+  height: number;
+  /** base64 of the original bytes */
+  data: string;
+  /** SHA-256 of the bytes (hex), to detect corruption and identical re-imports */
+  sha256?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Decrypted payload of an encrypted record. `kind` is inside the ciphertext, so it does not leak. */
 export type RecordPayload =
   | { kind: 'item'; item: VaultItem; updatedAt: number; device: string }
   | { kind: 'collection'; collection: Collection; updatedAt: number; device: string }
   | { kind: 'settings'; settings: VaultSettings; updatedAt: number; device: string }
+  | { kind: 'space'; space: SpaceEntry; updatedAt: number; device: string }
+  | { kind: 'asset'; asset: SpaceAsset; updatedAt: number; device: string }
   | { kind: 'tombstone'; updatedAt: number; device: string };
 
 /**

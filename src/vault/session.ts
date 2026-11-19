@@ -2,17 +2,7 @@ import { openJson, sealJson, type Sealed } from '../lib/crypto';
 import { randomId } from '../lib/encoding';
 import type { VaultRepository } from './db';
 import { aad, type VaultKeys } from './keys';
-import {
-  DEFAULT_VAULT_SETTINGS,
-  SETTINGS_RECORD_ID,
-  type Collection,
-  type EncryptedRecord,
-  type RecordPayload,
-  type SecurityConfig,
-  type VaultHeader,
-  type VaultItem,
-  type VaultSettings,
-} from './types';
+import { DEFAULT_VAULT_SETTINGS, SETTINGS_RECORD_ID, type Collection, type EncryptedRecord, type RecordPayload, type SecurityConfig, type VaultHeader, type VaultItem, type VaultSettings, type SpaceEntry, type SpaceAsset } from './types';
 
 /** Device-only secrets, encrypted with the vault's local subkey. Never synced. */
 export interface DeviceSecrets {
@@ -33,7 +23,7 @@ export interface DeviceSecrets {
 export interface ConflictNotice {
   id: string;
   at: number;
-  kind: 'item' | 'collection' | 'settings' | 'header';
+  kind: 'item' | 'collection' | 'settings' | 'header' | 'space';
   title: string;
   /** id of the record that won */
   keptId?: string;
@@ -193,6 +183,64 @@ export class VaultSession {
   getItem(id: string): VaultItem | undefined {
     const d = this.decrypted.get(id);
     return d?.payload.kind === 'item' ? d.payload.item : undefined;
+  }
+
+  // ------------------------------------------------------------------ My Space
+
+  spaceEntries(): SpaceEntry[] {
+    const out: SpaceEntry[] = [];
+    for (const d of this.decrypted.values()) if (d.payload.kind === 'space') out.push(d.payload.space);
+    return out;
+  }
+
+  spaceEntry(id: string): SpaceEntry | undefined {
+    const d = this.decrypted.get(id);
+    return d?.payload.kind === 'space' ? d.payload.space : undefined;
+  }
+
+  asset(id: string | null | undefined): SpaceAsset | undefined {
+    if (!id) return undefined;
+    const d = this.decrypted.get(id);
+    return d?.payload.kind === 'asset' ? d.payload.asset : undefined;
+  }
+
+  /**
+   * Save an entry, optionally with a new QR image, in ONE write: the entry never points at an
+   * image that was not stored. A replaced or removed image is tombstoned in the same write.
+   */
+  async saveSpaceEntry(entry: SpaceEntry, newAsset?: SpaceAsset | null, dropAssetId?: string | null): Promise<void> {
+    const now = Date.now();
+    const device = this.device.name;
+    const entries: { id: string; payload: RecordPayload }[] = [];
+    if (newAsset) entries.push({ id: newAsset.id, payload: { kind: 'asset', asset: newAsset, updatedAt: now, device } });
+    entries.push({ id: entry.id, payload: { kind: 'space', space: entry, updatedAt: now, device } });
+    if (
+      dropAssetId &&
+      dropAssetId !== newAsset?.id &&
+      dropAssetId !== entry.qrAssetId &&
+      this.decrypted.get(dropAssetId)?.payload.kind === 'asset' &&
+      !this.spaceEntries().some((e) => e.id !== entry.id && e.qrAssetId === dropAssetId)
+    ) {
+      entries.push({ id: dropAssetId, payload: { kind: 'tombstone', updatedAt: now, device } });
+    }
+    await this.writePayloads(entries);
+  }
+
+  /** Delete an entry and its QR image (tombstones, so the deletion syncs). */
+  async deleteSpaceEntry(id: string): Promise<void> {
+    const e = this.spaceEntry(id);
+    if (!e) return;
+    const now = Date.now();
+    const device = this.device.name;
+    const ids = [id];
+    const qr = e.qrAssetId;
+    if (qr && this.decrypted.get(qr)?.payload.kind === 'asset' && !this.spaceEntries().some((o) => o.id !== id && o.qrAssetId === qr)) ids.push(qr);
+    await this.writePayloads(ids.map((rid) => ({ id: rid, payload: { kind: 'tombstone', updatedAt: now, device } })));
+    const secrets = await this.getDeviceSecrets();
+    if (id in secrets.usage) {
+      delete secrets.usage[id];
+      await this.setDeviceSecrets(secrets);
+    }
   }
 
   // ------------------------------------------------------------------ writes

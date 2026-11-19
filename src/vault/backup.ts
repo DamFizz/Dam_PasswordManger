@@ -24,7 +24,7 @@ import { unwrapWithPasswordForImport } from './import-keys';
 import { aad } from './keys';
 import type { VaultRepository } from './db';
 import type { VaultSession } from './session';
-import type { Collection, EncryptedRecord, RecordPayload, VaultHeader, VaultItem } from './types';
+import type { Collection, EncryptedRecord, RecordPayload, SpaceAsset, SpaceEntry, VaultHeader, VaultItem } from './types';
 
 export const BACKUP_FORMAT = 'myvault-backup';
 export const BACKUP_FORMAT_VERSION = 1;
@@ -211,7 +211,38 @@ export async function restoreMerge(
   }
   if (toSaveCollections.length) await session.saveCollections(toSaveCollections);
   if (toSaveItems.length) await session.saveItems(toSaveItems);
+
+  // My Space: add missing entries (with their QR), skip identical ones, add differing ones as copies.
+  const backupAssets = new Map<string, SpaceAsset>();
+  for (const p of payloads) if (p.kind === 'asset') backupAssets.set(p.asset.id, p.asset);
+  for (const p of payloads) {
+    if (p.kind !== 'space') continue;
+    const entry = p.space;
+    const existing = session.spaceEntry(entry.id);
+    const asset = entry.qrAssetId ? backupAssets.get(entry.qrAssetId) : undefined;
+    if (!existing) {
+      const keepAsset = asset && !session.asset(asset.id) ? asset : undefined;
+      await session.saveSpaceEntry({ ...entry, qrAssetId: keepAsset || session.asset(entry.qrAssetId) ? entry.qrAssetId : null, updatedAt: now }, keepAsset);
+      result.added++;
+    } else if (sameSpace(existing, entry)) {
+      result.skipped++;
+    } else {
+      const copyId = randomId();
+      let copyAsset: SpaceAsset | undefined;
+      if (asset) copyAsset = { ...asset, id: randomId(), ownerId: copyId, updatedAt: now };
+      await session.saveSpaceEntry(
+        { ...entry, id: copyId, title: `${entry.title || entry.bankName || entry.holder || 'Bank account'} (restored copy)`, qrAssetId: copyAsset?.id ?? null, updatedAt: now },
+        copyAsset,
+      );
+      result.copies++;
+    }
+  }
   return result;
+}
+
+function sameSpace(a: SpaceEntry, b: SpaceEntry): boolean {
+  const strip = ({ updatedAt: _u, ...rest }: SpaceEntry) => JSON.stringify(Object.entries(rest).sort(([x], [y]) => x.localeCompare(y)));
+  return strip(a) === strip(b);
 }
 
 function sameItem(a: VaultItem, b: VaultItem): boolean {

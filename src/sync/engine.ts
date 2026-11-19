@@ -14,6 +14,7 @@ import { randomId } from '../lib/encoding';
 import { openJson } from '../lib/crypto';
 import { aad } from '../vault/keys';
 import type { ConflictNotice, VaultSession } from '../vault/session';
+import { spaceDisplayName } from '../lib/space';
 import type { EncryptedRecord, RecordPayload, SecurityConfig, VaultHeader } from '../vault/types';
 import { parseSyncFile, serializeSyncFile, InvalidVaultFileError } from './format';
 import { baseFromRecords, mergeRecords } from './merge';
@@ -230,6 +231,19 @@ export class SyncEngine {
           at: now,
           kind: 'item',
           title: winner.item.title,
+          keptId: c.id,
+          copyId,
+          message: `Edited on two devices at the same time. The newest version was kept and the version from “${loser.device}” was saved as a conflict copy.`,
+        });
+      } else if (winner.kind === 'space' && loser.kind === 'space') {
+        const copyId = randomId();
+        const copy = { ...loser.space, id: copyId, title: `${spaceDisplayName(loser.space)} (conflict copy)`, updatedAt: now };
+        rewrites.push({ id: copyId, rev: 1, payload: { kind: 'space', space: copy, updatedAt: now, device: loser.device } });
+        notices.push({
+          id: randomId(),
+          at: now,
+          kind: 'space',
+          title: spaceDisplayName(winner.space),
           keptId: c.id,
           copyId,
           message: `Edited on two devices at the same time. The newest version was kept and the version from “${loser.device}” was saved as a conflict copy.`,
